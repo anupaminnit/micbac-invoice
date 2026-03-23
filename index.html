@@ -434,189 +434,269 @@ function makePDF() {
       const drawPage = (isPackingList) => {
         let Y = MT;
 
-        // HEADER — Company name
-        fn(20,"bold"); tc(BLACK);
-        doc.text("MICBAC INDIA (OPC) PVT. LTD.",PW/2,Y+8,{align:"center"});
-        fn(9,"normal"); tc(MID);
-        doc.text("C/314 LOHARUKA GREEN OASIS, KAIKHALI, KOLKATA - 700052",PW/2,Y+14,{align:"center"});
-        Y+=16;
-        ln(ML,Y,ML+CW,Y,.3,MGRAY); Y+=2;
-        fn(7,"normal"); tc(MID);
-        doc.text("GST NUMBER - 19AANCM7741C1Z8",ML,Y+4);
-        doc.text("MSME REGN. NO : UDYAM-WB-14-0002339",ML+CW,Y+4,{align:"right"});
-        Y+=8; ln(ML,Y,ML+CW,Y,.5,BLACK); Y+=3;
+        // ── Colours matching the MICBAC sample ──────────────────────────
+        const AMBER   = [230, 126, 34];   // orange header fill
+        const AMBERT  = [255, 255, 255];  // white text on orange
+        const LBROWN  = [254, 243, 199];  // light amber tint for alt rows
+        const LBLUEGR = [235, 244, 255];  // light blue for exporter/consignee cells
+        const HDRBG   = [26,  35, 126];   // navy for INV NUMBER bar  
+        const BK      = [0,0,0];
+        const MID     = [100,100,100];
+        const MGRAY   = [200,200,200];
+        const WHITE   = [255,255,255];
 
-        // DOCUMENT TITLE
-        fn(13,"bold"); tc(BLACK);
-        doc.text(isPackingList?"PACKING LIST":"COMMERCIAL INVOICE",PW/2,Y+6,{align:"center"});
-        Y+=10;
+        // ── HEADER ───────────────────────────────────────────────────────
+        // Bold company name like sample
+        fn(18,"bold"); tc(BK);
+        doc.text("MICBAC INDIA (OPC) PVT. LTD.", PW/2, Y+9, {align:"center"});
+        fn(8.5,"normal"); tc(MID);
+        doc.text("C/314 LOHARUKA GREEN OASIS, KAIKHALI, KOLKATA - 700052", PW/2, Y+15, {align:"center"});
+        Y += 17;
 
-        // MAIN GRID — Left: Exporter+Consignee | Right: Invoice meta
-        const leftW=90, rightW=CW-leftW-2;
-        const gridTop=Y;
+        // GST row
+        sc(MGRAY); doc.setLineWidth(0.3); doc.line(ML, Y, ML+CW, Y);
+        Y += 2;
+        fn(6.5,"normal"); tc(MID);
+        doc.text("GST NUMBER - 19AANCM7741C1Z8", ML, Y+4);
+        doc.text("MSME REGN. NO : UDYAM-WB-14-0002339", ML+CW, Y+4, {align:"right"});
+        Y += 6;
+        sc(BK); doc.setLineWidth(0.8); doc.line(ML, Y, ML+CW, Y);
+        Y += 5;
 
-        // Left column boxes
-        // Exporter box
-        box(ML,Y,leftW,28,LBLUE); ln(ML,Y,ML+leftW,Y+28,.2,MGRAY);
-        fn(6.5,"bold"); tc(NAVY); doc.text("EXPORTER",ML+2,Y+5);
-        fn(7.5,"bold"); tc(BLACK); doc.text("MICBAC India (OPC) PVT. LTD.",ML+2,Y+10);
-        fn(6.5,"normal"); tc(BLACK);
-        doc.text("C/314 LOHARUKA GREEN OASIS, KAIKHALI, KOLKATA - 700052",ML+2,Y+14.5,{maxWidth:leftW-4});
-        doc.text("INDIA",ML+2,Y+18.5);
-        doc.text("IEC - AANCM7741C",ML+2,Y+22.5);
-        doc.text("GST NUMBER : 19AANCM7741C1Z8",ML+2,Y+26);
-        doc.text("LUT NO AD190425002007H",ML+2,Y+29.5);
-        Y+=32;
+        // Document title
+        fn(12,"bold"); tc(BK);
+        doc.text(isPackingList ? "PACKING LIST" : "COMMERCIAL INVOICE", PW/2, Y+6, {align:"center"});
+        Y += 10;
 
-        // Consignee box
-        box(ML,Y,leftW,10,LBLUE); ln(ML,Y,ML+leftW,Y+10,.2,MGRAY);
-        fn(6.5,"bold"); tc(NAVY); doc.text("CONSIGNEE:",ML+2,Y+4.5);
-        fn(6.5,"normal"); tc(BLACK); doc.text(consStr,ML+2+22,Y+4.5,{maxWidth:leftW-26});
-        Y+=11;
+        // ── TWO-COLUMN INFO GRID ─────────────────────────────────────────
+        const BRD = [180,180,180];
+        const leftW = 90, rightW = CW - leftW;
+        const gridTop = Y;
 
-        // Notify party box
-        const notifyH = 20 + doc.splitTextToSize(notify,leftW-4).length*3.5;
-        box(ML,Y,leftW,notifyH,[255,255,255]); ln(ML,Y,ML+leftW,Y+notifyH,.2,MGRAY);
-        fn(6.5,"bold"); tc(BLACK); doc.text("NOTIFY PARTY:",ML+2,Y+5);
-        fn(6.5,"bold"); tc(BLACK); wrapTxt(notify,ML+2,Y+9.5,leftW-4,3.8);
-        const notifyLines = doc.splitTextToSize(notify,leftW-4).length;
+        // Helper: draw bordered cell
+        const cellBox = (x, cy, w, h, fill) => {
+          if (fill) { fc(fill); doc.rect(x, cy, w, h, "F"); }
+          sc(BRD); doc.setLineWidth(0.2); doc.rect(x, cy, w, h, "S");
+        };
+
+        // ── LEFT COLUMN ──────────────────────────────────────────────────
+        // EXPORTER header cell
+        cellBox(ML, Y, leftW, 6, AMBER);
+        fn(6.5,"bold"); tc(AMBERT); doc.text("EXPORTER", ML+3, Y+4.2);
+        Y += 6;
+
+        // Exporter details cell
+        const exporterH = 28;
+        cellBox(ML, Y, leftW, exporterH, WHITE);
+        fn(7,"bold"); tc(BK); doc.text("MICBAC India (OPC) PVT. LTD.", ML+3, Y+5.5);
+        fn(6.5,"normal"); tc(BK);
+        doc.text("C/314 LOHARUKA GREEN OASIS, KAIKHALI, KOLKATA - 700052", ML+3, Y+10, {maxWidth: leftW-5});
+        doc.text("INDIA", ML+3, Y+14.5);
+        doc.text("IEC - AANCM7741C", ML+3, Y+18.5);
+        doc.text("GST NUMBER : 19AANCM7741C1Z8", ML+3, Y+22.5);
+        doc.text("LUT NO AD190425002007H", ML+3, Y+26.5);
+        Y += exporterH;
+
+        // CONSIGNEE header+content
+        cellBox(ML, Y, leftW, 6, AMBER);
+        fn(6.5,"bold"); tc(AMBERT); doc.text("CONSIGNEE:", ML+3, Y+4.2);
+        Y += 6;
+        cellBox(ML, Y, leftW, 8, WHITE);
+        fn(6.5,"normal"); tc(BK);
+        doc.text(consStr, ML+3, Y+5.5, {maxWidth: leftW-5});
+        Y += 8;
+
+        // NOTIFY PARTY header + content
+        cellBox(ML, Y, leftW, 6, AMBER);
+        fn(6.5,"bold"); tc(AMBERT); doc.text("NOTIFY PARTY:", ML+3, Y+4.2);
+        Y += 6;
+
+        const notifyNameLines = doc.splitTextToSize(notify, leftW-5);
+        const notifyAddrLines = doc.splitTextToSize("Address: " + notifyAddr, leftW-5);
+        const notifyH2 = Math.max(18, notifyNameLines.length*4 + notifyAddrLines.length*3.8 + 6);
+        cellBox(ML, Y, leftW, notifyH2, WHITE);
+        fn(6.5,"bold"); tc(BK);
+        notifyNameLines.forEach((l,i) => doc.text(l, ML+3, Y+5+i*4.2));
         fn(6,"normal"); tc(MID);
-        wrapTxt("Address: "+notifyAddr,ML+2,Y+9.5+notifyLines*3.8+1,leftW-4,3.5);
-        Y+=notifyH+1;
+        const notifyNY = Y + 5 + notifyNameLines.length*4.2 + 1.5;
+        notifyAddrLines.forEach((l,i) => doc.text(l, ML+3, notifyNY+i*3.8));
+        Y += notifyH2;
 
-        // Tax code
-        box(ML,Y,leftW,8,[255,255,255]); ln(ML,Y,ML+leftW,Y+8,.2,MGRAY);
-        fn(6.5,"normal"); tc(BLACK);
-        doc.text("TAX CODE - "+notifyTax,ML+2,Y+5);
-        Y+=9;
+        // TAX CODE row
+        cellBox(ML, Y, leftW, 7, WHITE);
+        fn(6.5,"normal"); tc(BK);
+        doc.text("TAX CODE - " + notifyTax, ML+3, Y+4.8);
+        Y += 7;
 
-        // Right column — invoice meta
+        const leftColBottom = Y;
+
+        // ── RIGHT COLUMN ─────────────────────────────────────────────────
         let RY = gridTop;
-        const RX = ML+leftW+2;
-        const metaRows = [
-          ["INVOICE NUMBER : "+invNo, true],
-          ["INVOICE DATE : "+invDate, false],
-          ["CONTRACT NO : "+ctNo, false],
-          ["CONTRACT DATE : "+ctDate, false],
-          ["CONTAINER TYPE : "+ctType, false],
-          ["COUNTRY OF ORIGIN OF GOODS : "+coo, false],
-          ["PORT OF LOADING : "+pol, false],
-          ["PORT OF DESTINATION : "+pod, false],
-          ["INCO TERMS : "+inco, false],
+        const RX = ML + leftW;
+
+        const metaItems = [
+          { label:"INVOICE NUMBER : " + invNo, highlight: true },
+          { label:"INVOICE DATE : " + invDate },
+          { label:"CONTRACT NO : " + ctNo },
+          { label:"CONTRACT DATE : " + ctDate },
+          { label:"CONTAINER TYPE : " + ctType },
+          { label:"COUNTRY OF ORIGIN OF GOODS : " + coo },
+          { label:"PORT OF LOADING : " + pol },
+          { label:"PORT OF DESTINATION : " + pod },
+          { label:"INCO TERMS : " + inco },
         ];
-        metaRows.forEach((m,i) => {
-          const rh = i===0?8:7;
-          if(i===0){ box(RX,RY,rightW,rh,ORANGE); fn(6.5,"bold"); tc(WHITE); }
-          else{ box(RX,RY,rightW,rh,i%2===0?[255,255,255]:LGRAY); fn(6.5,i===5?"bold":"normal"); tc(BLACK); }
-          wrapTxt(m[0],RX+2,RY+4.5,rightW-4,3.5);
-          RY+=rh;
+
+        metaItems.forEach((item, i) => {
+          const rowH = i === 0 ? 8 : 7;
+          if (item.highlight) {
+            cellBox(RX, RY, rightW, rowH, AMBER);
+            fn(7,"bold"); tc(WHITE);
+          } else {
+            cellBox(RX, RY, rightW, rowH, i % 2 === 0 ? WHITE : LBROWN);
+            fn(6.5, i <= 1 ? "bold" : "normal"); tc(BK);
+          }
+          doc.text(item.label, RX+3, RY+rowH-2.5, {maxWidth: rightW-5});
+          RY += rowH;
         });
-        // Payment terms
-        box(RX,RY,rightW,10,[255,245,220]);
-        fn(6,"bold"); tc(ORANGE); doc.text("PAYMENT TERMS:",RX+2,RY+4.5);
-        fn(6,"normal"); tc(BLACK); wrapTxt(payT,RX+2,RY+8,rightW-4,3.5);
-        RY+=11;
 
-        // Move Y to below both columns
-        Y = Math.max(Y,RY)+2;
+        // Payment terms — amber tinted
+        const payLines = doc.splitTextToSize("PAYMENT TERMS: " + payT, rightW-5);
+        const payH = Math.max(10, payLines.length*4+4);
+        cellBox(RX, RY, rightW, payH, LBROWN);
+        fn(6.5,"bold"); tc(AMBER); doc.text("PAYMENT TERMS:", RX+3, RY+5);
+        fn(6.5,"normal"); tc(BK);
+        doc.splitTextToSize(payT, rightW-5).forEach((l,i) => doc.text(l, RX+3, RY+9+i*4));
+        RY += payH;
 
-        // GOODS TABLE
-        const colW = isPackingList
-          ? [8, 60, 22, 22, 22, 52]   // SL | DESC | HS | UNIT | QTY | GWT
-          : [8, 60, 22, 22, 22, 22, 22]; // SL | DESC | HS | UNIT | QTY | RATE | AMT
-        const hdrs = isPackingList
-          ? ["SL NO","DESCRIPTION","HS CODE","UNIT","QTY.","GROSS WEIGHT"]
-          : ["SL NO","DESCRIPTION","HS CODE","UNIT","QTY","RATE/MT","AMOUNT"];
+        Y = Math.max(leftColBottom, RY) + 3;
 
-        box(ML,Y,CW,8,ORANGE);
-        let cx=ML;
-        hdrs.forEach((h,i) => {
+        // ── GOODS TABLE ───────────────────────────────────────────────────
+        if (isPackingList) {
+          var colW = [10, 60, 24, 24, 24, 44];
+          var hdrs = ["SL NO","DESCRIPTION","HS CODE","UNIT","QTY.","GROSS WEIGHT"];
+        } else {
+          var colW = [10, 58, 22, 24, 18, 24, 30];
+          var hdrs = ["SL NO","DESCRIPTION","HS CODE","UNIT","QTY","RATE/MT","AMOUNT"];
+        }
+
+        // Table header row
+        cellBox(ML, Y, CW, 8, AMBER);
+        let cx = ML;
+        hdrs.forEach((h, i) => {
           fn(6.5,"bold"); tc(WHITE);
-          doc.text(h,cx+colW[i]/2,Y+5,{align:"center",maxWidth:colW[i]-2});
-          cx+=colW[i];
+          const px = i >= 4 ? cx+colW[i]-2 : i===1 ? cx+3 : cx+colW[i]/2;
+          const al = i >= 4 ? "right" : i===1 ? "left" : "center";
+          doc.text(h, px, Y+5.5, {align:al, maxWidth:colW[i]-3});
+          cx += colW[i];
         });
-        Y+=8;
+        Y += 8;
 
-        goodsRows.forEach((r,ri) => {
-          const descLines = doc.splitTextToSize(r.desc.toUpperCase(),colW[1]-4);
-          const rowH = Math.max(14, descLines.length*4+6);
-          box(ML,Y,CW,rowH,ri%2===0?[255,255,255]:LGRAY); ln(ML,Y,ML+CW,Y+rowH,.1,MGRAY);
-          fn(6,"normal"); tc(BLACK);
-          cx=ML;
+        // Data rows
+        goodsRows.forEach((r, ri) => {
+          const descLines = doc.splitTextToSize(r.desc.toUpperCase(), colW[1]-5);
+          const rowH = Math.max(12, descLines.length*4.5+5);
+          cellBox(ML, Y, CW, rowH, ri%2===0 ? WHITE : LBROWN);
+
+          fn(7,"normal"); tc(BK);
+          cx = ML;
           const amt = (parseFloat(r.qty)||0)*(parseFloat(r.rate)||0);
           const vals = isPackingList
             ? [String(ri+1), r.desc.toUpperCase(), r.hscode, r.unit.toUpperCase(), String(r.qty), grossWt+" KGS"]
             : [String(ri+1), r.desc.toUpperCase(), r.hscode, r.unit.toUpperCase(), String(r.qty), "$"+fmt(r.rate)+"/MT", "$"+fmt(amt)];
-          vals.forEach((v,vi) => {
-            const isRight = vi>=4;
-            wrapTxt(v, isRight?cx+colW[vi]-2:cx+2, Y+5, colW[vi]-3, 3.8);
-            cx+=colW[vi];
+
+          vals.forEach((v, vi) => {
+            const isRight = vi >= 4;
+            const isCenter = vi === 0 || vi === 2;
+            const px = isRight ? cx+colW[vi]-2 : isCenter ? cx+colW[vi]/2 : cx+3;
+            const al = isRight ? "right" : isCenter ? "center" : "left";
+            const lh = vi===1 ? 4.5 : 3.8;
+            doc.splitTextToSize(v, colW[vi]-3).forEach((l,li) =>
+              doc.text(l, px, Y+5+li*lh, {align:al}));
+            cx += colW[vi];
           });
-          Y+=rowH;
+          Y += rowH;
         });
 
-        // Totals rows
+        // ── TOTALS / SUMMARY ROWS ────────────────────────────────────────
         if (!isPackingList) {
-          const tRows=[
-            ["QTY TOTAL", goodsRows.reduce((s,r)=>s+(parseFloat(r.qty)||0),0)+" METRIC TONNES", "TOTAL IN $", "$"+fmt(grandTotal)],
-            ["","","R. OFF (-/+)","$"],
-            ["MARKING: "+marking+"\nTOTAL: "+pkgTotal,"","GRAND TOTAL","$"+fmt(grandTotal)],
-          ];
-          tRows.forEach((tr,ti) => {
-            const rowH = ti===2?14:8;
-            box(ML,Y,CW,rowH,LGRAY); ln(ML,Y,ML+CW,Y+rowH,.1,MGRAY);
-            fn(6,"normal"); tc(BLACK);
-            if(ti===0){
-              fn(6,"bold"); doc.text("QTY TOTAL",ML+2,Y+5);
-              doc.text(String(goodsRows.reduce((s,r)=>s+(parseFloat(r.qty)||0),0))+" METRIC TONNES",ML+18,Y+5);
-              doc.text("TOTAL IN $",ML+CW-44,Y+5);
-              fn(7,"bold"); tc(ORANGE); doc.text("$"+fmt(grandTotal),ML+CW-2,Y+5,{align:"right"});
-            } else if(ti===1){
-              tc(BLACK); fn(6,"normal");
-              doc.text("R. OFF (-/+)",ML+CW-44,Y+5);
-              doc.text("$",ML+CW-2,Y+5,{align:"right"});
-            } else {
-              fn(6,"normal"); tc(BLACK);
-              wrapTxt("MARKING: "+marking,ML+2,Y+4,70,3.5);
-              fn(6,"bold"); doc.text("TOTAL: "+pkgTotal,ML+2,Y+10,{maxWidth:70});
-              doc.text("GRAND TOTAL",ML+CW-44,Y+6);
-              fn(8,"bold"); tc(ORANGE); doc.text("$"+fmt(grandTotal),ML+CW-2,Y+6,{align:"right"});
-            }
-            Y+=rowH;
-          });
+          const totalQty = goodsRows.reduce((s,r)=>s+(parseFloat(r.qty)||0),0);
+
+          // QTY TOTAL row
+          cellBox(ML, Y, CW, 8, LBROWN);
+          fn(6.5,"bold"); tc(BK);
+          doc.text("QTY TOTAL", ML+3, Y+5.5);
+          doc.text(totalQty+" METRIC TONNES", ML+70, Y+5.5);
+          doc.text("TOTAL IN $", ML+CW-60, Y+5.5);
+          fn(7,"bold"); tc(AMBER);
+          doc.text("$"+fmt(grandTotal), ML+CW-2, Y+5.5, {align:"right"});
+          Y += 8;
+
+          // R.OFF row
+          cellBox(ML, Y, CW, 7, WHITE);
+          fn(6.5,"normal"); tc(MID);
+          doc.text("R. OFF (-/+)", ML+CW-60, Y+4.8);
+          doc.text("$", ML+CW-2, Y+4.8, {align:"right"});
+          Y += 7;
+
+          // Marking + Grand Total row
+          cellBox(ML, Y, CW, 14, LBROWN);
+          fn(6.5,"normal"); tc(BK);
+          doc.text("MARKING : "+marking, ML+3, Y+5);
+          fn(6.5,"bold"); doc.text("TOTAL: "+pkgTotal, ML+3, Y+10);
+          doc.text("GRAND TOTAL", ML+CW-60, Y+7);
+          fn(9,"bold"); tc(AMBER);
+          doc.text("$"+fmt(grandTotal), ML+CW-2, Y+7, {align:"right"});
+          Y += 14;
         } else {
-          // Packing list totals
-          box(ML,Y,CW,10,LGRAY); ln(ML,Y,ML+CW,Y+10,.1,MGRAY);
-          fn(6,"normal"); tc(BLACK);
-          doc.text("MARKING: "+marking,ML+2,Y+4);
-          fn(6,"bold"); doc.text("PACKING: "+pkgDesc,ML+2,Y+8);
-          Y+=10;
-          box(ML,Y,CW,8,LGRAY); ln(ML,Y,ML+CW,Y+8,.1,MGRAY);
-          fn(6,"bold"); doc.text("TOTAL: "+pkgTotal,ML+2,Y+5);
-          Y+=8;
-          // Weight rows
-          box(ML,Y,colW[0]+colW[1]+colW[2],12,[255,255,255]); ln(ML,Y,ML+CW,Y+12,.1,MGRAY);
-          fn(6.5,"bold"); tc(BLACK);
-          doc.text("GROSS WEIGHT: "+grossWt+" KGS",ML+2,Y+5);
-          doc.text("NET WEIGHT: "+netWt+" KGS",ML+2,Y+9.5);
-          // Total col
-          box(ML+colW[0]+colW[1]+colW[2],Y,colW[3]+colW[4]+colW[5],12,LGRAY);
-          doc.text("TOTAL",ML+colW[0]+colW[1]+colW[2]+2,Y+5);
-          fn(6.5,"bold"); doc.text(pkgCount+" "+pkgType,ML+colW[0]+colW[1]+colW[2]+colW[3]+2,Y+5);
-          fn(6.5,"bold"); doc.text(grossWt+" KGS",ML+CW-2,Y+5,{align:"right"});
-          Y+=12;
+          // Packing list summary rows
+          cellBox(ML, Y, CW, 7, LBROWN);
+          fn(6.5,"normal"); tc(BK);
+          doc.text("MARKING : "+marking, ML+3, Y+4.8);
+          Y += 7;
+
+          cellBox(ML, Y, CW, 7, WHITE);
+          fn(6.5,"bold"); tc(BK);
+          doc.text("PACKING : "+pkgDesc, ML+3, Y+4.8);
+          Y += 7;
+
+          cellBox(ML, Y, CW, 7, LBROWN);
+          fn(6.5,"bold"); tc(BK);
+          doc.text("TOTAL: "+pkgTotal, ML+3, Y+4.8);
+          Y += 7;
+
+          // Weight + totals
+          const wColW = colW[0]+colW[1]+colW[2];
+          cellBox(ML, Y, wColW, 13, WHITE);
+          fn(7,"bold"); tc(BK);
+          doc.text("GROSS WEIGHT : "+grossWt+" KGS", ML+3, Y+5.5);
+          doc.text("NET WEIGHT.  : "+netWt+" KGS", ML+3, Y+10.5);
+
+          cellBox(ML+wColW, Y, CW-wColW, 13, LBROWN);
+          fn(6.5,"bold"); tc(BK);
+          doc.text("TOTAL", ML+wColW+3, Y+5.5);
+          doc.text(pkgCount+" "+pkgType, ML+wColW+24, Y+5.5);
+          doc.text(grossWt+" KGS", ML+CW-2, Y+5.5, {align:"right"});
+          Y += 13;
         }
 
         // E.&O.E
-        fn(6,"normal"); tc(MID); doc.text("E. & O.E",ML+CW,Y+5,{align:"right"}); Y+=8;
-        ln(ML,Y,ML+CW,Y,.3,MGRAY); Y+=2;
+        fn(7,"italic"); tc(MID);
+        doc.text("E. & O.E", ML+CW, Y+5, {align:"right"});
+        Y += 8;
 
-        if(!isPackingList) {
-          // BANK INFO
-          fn(7,"bold"); tc(BLACK); doc.text("BENEFICIARY BANK INFO",ML,Y+5);
-          fn(6,"normal"); tc(MID); doc.text("(underlined)",ML+42,Y+5);
-          ln(ML,Y+6,ML+40,Y+6,.3,BLACK); Y+=9;
-          const bankLines=[
+        sc(BRD); doc.setLineWidth(0.3); doc.line(ML, Y, ML+CW, Y);
+        Y += 3;
+
+        // ── BANK DETAILS (Commercial Invoice only) ───────────────────────
+        if (!isPackingList) {
+          fn(7,"bold"); tc(BK);
+          doc.text("BENEFICIARY BANK INFO", ML, Y+5);
+          sc(BK); doc.setLineWidth(0.3);
+          doc.line(ML, Y+6, ML+doc.getTextWidth("BENEFICIARY BANK INFO"), Y+6);
+          Y += 9;
+
+          fn(6.5,"normal"); tc(BK);
+          const bankLines = [
             "Account holder name: MICBAC INDIA (OPC) PRIVATE LIMITED",
             "Payment method: SWIFT (International wire)",
             "IBAN (Account number): GB82TCCL04140412569422",
@@ -625,31 +705,29 @@ function makePDF() {
             "Beneficiary address: 12 Steward Street, The Steward Building, London, E1 6FQ, Great Britain",
             "Beneficiary bank country: United Kingdom",
           ];
-          fn(6.5,"normal"); tc(BLACK);
-          bankLines.forEach(l => { doc.text(l,ML+4,Y+4); Y+=4.5; });
-          Y+=3;
+          bankLines.forEach(l => { doc.text(l, ML+5, Y+4); Y += 4.5; });
+          Y += 2;
         }
 
-        // SIGNATURE BLOCK
-        const sigY=Y;
-        fn(7,"bold"); tc(BLACK); doc.text("FOR",ML+CW,sigY+4,{align:"right"});
-        doc.addImage("data:image/jpeg;base64,"+SIG,"JPEG",ML+CW-52,sigY+6,52,26);
-        fn(6.5,"bold"); tc(BLACK); doc.text("MICBAC INDIA (OPC) PVT. LTD.",ML+CW,sigY+34,{align:"right"});
-        Y=sigY+38;
+        // ── SIGNATURE ────────────────────────────────────────────────────
+        const sigY = Y + 2;
+        fn(7,"bold"); tc(BK); doc.text("FOR", ML+CW, sigY+4, {align:"right"});
+        doc.addImage("data:image/jpeg;base64,"+SIG,"JPEG", ML+CW-56, sigY+6, 56, 28);
+        fn(7,"bold"); tc(BK); doc.text("MICBAC INDIA (OPC) PVT. LTD.", ML+CW, sigY+37, {align:"right"});
+        Y = sigY + 42;
 
-        // DECLARATION
-        ln(ML,Y,ML+CW,Y,.3,MGRAY); Y+=3;
-        fn(6.5,"bold"); tc(BLACK); doc.text("DECLARATION",ML,Y+4); Y+=8;
-        fn(6,"normal"); tc(BLACK);
-        doc.text("We declare that the above information is true and correct to the best of our knowledge.",ML,Y+1,{maxWidth:CW}); Y+=7;
-
-        // T&C
-        fn(6.5,"bold"); tc(BLACK); doc.text("TERMS AND CONDITIONS",ML,Y+4); Y+=8;
-        fn(6,"normal"); tc(BLACK);
-        ["We are not responsible for any transit damage, loss or leakage",
+        // ── DECLARATION + T&C ─────────────────────────────────────────────
+        sc(BRD); doc.setLineWidth(0.2); doc.line(ML, Y, ML+CW, Y); Y += 3;
+        fn(6.5,"bold"); tc(BK); doc.text("DECLARATION", ML, Y+4); Y += 8;
+        fn(6,"normal"); tc(BK);
+        doc.text("We declare that the above information is true and correct to the best of our knowledge.", ML, Y, {maxWidth:CW});
+        Y += 7;
+        fn(6.5,"bold"); tc(BK); doc.text("TERMS AND CONDITIONS", ML, Y+4); Y += 8;
+        fn(6,"normal"); tc(BK);
+        ["We are not responsible for any transit damage, loss or leakage.",
          "MICBAC INDIA (OPC) PVT. LTD. is registered under the MSMED Act, 2006."
-        ].forEach(t => { doc.text("•  "+t,ML,Y+1,{maxWidth:CW}); Y+=5; });
-      };
+        ].forEach(t => { doc.text("• "+t, ML, Y, {maxWidth:CW}); Y += 5; });
+      };;
 
       // Draw page 1 - Commercial Invoice
       drawPage(false);

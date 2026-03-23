@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MICBAC India — Invoice Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{--navy:#1a237e;--gold:#e65100;--light:#F7F8FC;--border:#DDE1EE;--text:#1A1E2E;--muted:#6B7280;--r:10px;--sh:0 2px 16px rgba(26,35,126,.09)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"DM Sans",sans-serif;background:var(--light);color:var(--text)}
+nav{background:var(--navy);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:58px;position:sticky;top:0;z-index:99;box-shadow:0 2px 16px rgba(26,35,126,.3)}
+.nl{display:flex;align-items:center;gap:12px}
+.nl-title{color:#fff;font-family:"DM Serif Display",serif;font-size:1.05rem;line-height:1.2}
+.nl-sub{color:rgba(255,255,255,.6);font-size:.72rem}
+.nb{background:var(--gold);color:#fff;font-size:.68rem;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.06em;text-transform:uppercase}
+.wrap{max-width:1040px;margin:0 auto;padding:28px 18px 56px}
+.prog{display:flex;background:#fff;border-radius:50px;padding:5px;box-shadow:var(--sh);margin-bottom:28px}
+.stp{flex:1;text-align:center;padding:9px 6px;border-radius:40px;font-size:.75rem;font-weight:500;color:var(--muted);cursor:pointer;transition:.2s}
+.stp.on{background:var(--navy);color:#fff;font-weight:600}
+.stp.dn{color:var(--navy);font-weight:600}
+.stp.dn::after{content:"✓";margin-left:4px;color:var(--gold)}
+.card{background:#fff;border-radius:12px;box-shadow:var(--sh);overflow:hidden;margin-bottom:18px}
+.ch{background:var(--navy);padding:15px 24px;display:flex;align-items:center;gap:10px}
+.ch h2{color:#fff;font-family:"DM Serif Display",serif;font-size:1.08rem;font-weight:400}
+.ci{background:rgba(255,255,255,.15);border-radius:7px;width:30px;height:30px;display:flex;align-items:center;justify-content:center}
+.cb{padding:22px 24px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:11px}
+.s2{grid-column:span 2}.s3{grid-column:span 3}.s4{grid-column:span 4}
+@media(max-width:680px){.g2,.g3,.g4{grid-template-columns:1fr}.s2,.s3,.s4{grid-column:span 1}}
+.f{display:flex;flex-direction:column;gap:5px}
+.f label{font-size:.72rem;font-weight:600;color:var(--navy);text-transform:uppercase;letter-spacing:.05em}
+.f label span{color:var(--gold)}
+.f input,.f select,.f textarea{border:1.5px solid var(--border);border-radius:var(--r);padding:9px 12px;font-family:"DM Sans",sans-serif;font-size:.86rem;color:var(--text);background:#fff;transition:.2s;width:100%}
+.f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px rgba(26,35,126,.07)}
+.f textarea{resize:vertical;min-height:60px}
+.mono{font-family:"JetBrains Mono",monospace!important;font-size:.83rem!important}
+.sl{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin:18px 0 10px;border-bottom:1px solid var(--border);padding-bottom:5px}
+.info-box{background:#f0f4ff;border:1.5px solid #c5cae9;border-radius:8px;padding:12px 16px;font-size:.82rem;color:#3949ab;margin-bottom:16px;line-height:1.7}
+.info-box strong{color:var(--navy)}
+/* Goods table */
+.gt{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:4px}
+.gt th{background:var(--navy);color:#fff;padding:8px 9px;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;text-align:left}
+.gt td{padding:7px 9px;border-bottom:1px solid var(--border);vertical-align:middle}
+.gt tr:nth-child(even) td{background:#F9FAFC}
+.gt input,.gt textarea{border:1.5px solid var(--border);border-radius:5px;padding:5px 7px;font-family:"DM Sans",sans-serif;font-size:.8rem;width:100%;background:#fff}
+.gt input:focus,.gt textarea:focus{outline:none;border-color:var(--navy)}
+.gt .mono{font-family:"JetBrains Mono",monospace;font-size:.78rem}
+.del-btn{background:none;border:none;cursor:pointer;color:#EF4444;font-size:1rem;padding:2px 5px;border-radius:4px}
+.del-btn:hover{background:#FEE2E2}
+.add-btn{display:flex;align-items:center;gap:7px;background:none;border:1.5px dashed var(--border);border-radius:var(--r);padding:9px 14px;font-family:"DM Sans",sans-serif;font-size:.83rem;color:var(--navy);cursor:pointer;width:100%;margin-top:9px;transition:.2s;font-weight:500}
+.add-btn:hover{background:var(--light);border-color:var(--navy)}
+/* Summary */
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.sb{background:var(--light);border-radius:9px;padding:12px 14px}
+.sb h4{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);margin-bottom:7px}
+.sb p{font-size:.81rem;line-height:1.6}
+.grand-box{background:var(--navy);color:#fff;border-radius:9px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center}
+.grand-amt{font-family:"DM Serif Display",serif;font-size:1.9rem;color:var(--gold)}
+/* Buttons */
+.br{display:flex;justify-content:space-between;align-items:center;margin-top:24px;gap:10px}
+.btn{padding:11px 26px;border-radius:50px;font-family:"DM Sans",sans-serif;font-size:.86rem;font-weight:600;cursor:pointer;transition:.2s;border:none;display:flex;align-items:center;gap:7px}
+.bp{background:var(--navy);color:#fff}.bp:hover{background:#283593;box-shadow:0 4px 14px rgba(26,35,126,.25)}
+.bs{background:#fff;color:var(--navy);border:1.5px solid var(--border)}.bs:hover{border-color:var(--navy)}
+.bg{background:var(--gold);color:#fff;font-size:.92rem;padding:13px 32px}.bg:hover{background:#bf360c;box-shadow:0 4px 18px rgba(230,81,0,.35)}
+.bg:disabled{opacity:.6;cursor:not-allowed}
+.toast{position:fixed;bottom:24px;right:24px;color:#fff;padding:12px 20px;border-radius:9px;font-size:.85rem;font-weight:500;box-shadow:0 8px 22px rgba(0,0,0,.2);transform:translateY(70px);opacity:0;transition:.3s;z-index:999;display:flex;align-items:center;gap:9px}
+.toast.show{transform:translateY(0);opacity:1}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nl">
+    <div>
+      <div class="nl-title">MICBAC India (OPC) Pvt. Ltd.</div>
+      <div class="nl-sub">Commercial Invoice &amp; Packing List Generator</div>
+    </div>
+  </div>
+  <span class="nb">Export Documents</span>
+</nav>
+
+<div class="wrap">
+  <div class="prog">
+    <div class="stp on" onclick="go(0)">① Invoice Details</div>
+    <div class="stp"    onclick="go(1)">② Parties &amp; Ports</div>
+    <div class="stp"    onclick="go(2)">③ Goods</div>
+    <div class="stp"    onclick="go(3)">④ Packing &amp; Generate</div>
+  </div>
+
+  <!-- ═══ STEP 0: INVOICE DETAILS ═══ -->
+  <div id="s0">
+    <div class="info-box">
+      <strong>Static (pre-filled):</strong> Exporter details, IEC, GST, LUT No., MSME Reg., bank details, declaration &amp; T&amp;C are fixed and will appear automatically in the PDF.
+    </div>
+    <div class="card">
+      <div class="ch"><div class="ci">🧾</div><h2>Invoice &amp; Contract Details</h2></div>
+      <div class="cb">
+        <div class="g4">
+          <div class="f"><label>Invoice Number <span>*</span></label><input class="mono" id="invNo" placeholder="MIPLWB/067/25-26"/></div>
+          <div class="f"><label>Invoice Date <span>*</span></label><input type="date" id="invDate"/></div>
+          <div class="f"><label>Contract Number</label><input id="ctNo" placeholder="MICBAC OMI 027"/></div>
+          <div class="f"><label>Contract Date</label><input type="date" id="ctDate"/></div>
+        </div>
+        <div class="g3" style="margin-top:14px">
+          <div class="f"><label>Container Type</label>
+            <select id="ctType">
+              <option>FCL 40 FT.</option>
+              <option>FCL 20 FT.</option>
+              <option>FCL 40 HC FT.</option>
+              <option>LCL</option>
+            </select>
+          </div>
+          <div class="f"><label>Inco Terms <span>*</span></label><input id="inco" placeholder="CIF HAI PHONG Port, VN"/></div>
+          <div class="f"><label>Payment Terms</label>
+            <select id="payTerms">
+              <option value="15 DAYS AFTER GOODS REACH DESTINATION PORT">15 Days After Goods Reach Destination Port</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="br"><span></span><button class="btn bp" onclick="go(1)">Next: Parties &amp; Ports →</button></div>
+  </div>
+
+  <!-- ═══ STEP 1: PARTIES & PORTS ═══ -->
+  <div id="s1" style="display:none">
+    <div class="card">
+      <div class="ch"><div class="ci">🚢</div><h2>Consignee, Notify Party &amp; Ports</h2></div>
+      <div class="cb">
+        <div class="sl">Consignee</div>
+        <div class="g2">
+          <div class="f"><label>Consignee <span>*</span></label>
+            <select id="consigneeType" onchange="toggleConsignee()">
+              <option value="order">To The Order</option>
+              <option value="named">Named Consignee</option>
+            </select>
+          </div>
+          <div class="f" id="consigneeNameField" style="display:none"><label>Consignee Name</label><textarea id="consigneeName" placeholder="Full consignee name and address"></textarea></div>
+        </div>
+        <div class="sl">Notify Party</div>
+        <div class="g2">
+          <div class="f"><label>Company Name <span>*</span></label><input id="notifyName" placeholder="e.g. OMI OPERATION MAINTENANCE AND INVESTMENT JOINT STOCK COMPANY"/></div>
+          <div class="f"><label>Address</label><textarea id="notifyAddr" placeholder="Full address of notify party">154 Pham Van Chieu Street, Thong Tay Hoi Ward, Ho Chi Minh City, Vietnam</textarea></div>
+        </div>
+        <div class="g2" style="margin-top:8px">
+          <div class="f"><label>Tax Code / VAT No.</label><input id="notifyTax" placeholder="e.g. 0315761181"/></div>
+          <div class="f"><label>Country of Origin</label><input id="coo" value="INDIA"/></div>
+        </div>
+        <div class="sl">Ports</div>
+        <div class="g2">
+          <div class="f"><label>Port of Loading <span>*</span></label>
+            <select id="pol">
+              <option value="KOLKATA PORT, INDIA"  selected>KOLKATA PORT, INDIA</option>
+              <option value="HALDIA PORT, INDIA">HALDIA PORT, INDIA</option>
+              <option value="NHAVA SHEVA (JNPT), MUMBAI, INDIA">NHAVA SHEVA (JNPT), MUMBAI, INDIA</option>
+              <option value="MUMBAI PORT, INDIA">MUMBAI PORT, INDIA</option>
+              <option value="MUNDRA PORT, INDIA">MUNDRA PORT, INDIA</option>
+              <option value="KANDLA PORT, INDIA">KANDLA PORT, INDIA</option>
+              <option value="HAZIRA PORT, INDIA">HAZIRA PORT, INDIA</option>
+              <option value="CHENNAI PORT, INDIA">CHENNAI PORT, INDIA</option>
+              <option value="ENNORE PORT, INDIA">ENNORE PORT, INDIA</option>
+              <option value="TUTICORIN PORT, INDIA">TUTICORIN PORT, INDIA</option>
+              <option value="COCHIN PORT, INDIA">COCHIN PORT, INDIA</option>
+              <option value="VISAKHAPATNAM PORT, INDIA">VISAKHAPATNAM PORT, INDIA</option>
+              <option value="PARADIP PORT, INDIA">PARADIP PORT, INDIA</option>
+              <option value="MORMUGAO PORT (GOA), INDIA">MORMUGAO PORT (GOA), INDIA</option>
+              <option value="MANGALORE PORT, INDIA">MANGALORE PORT, INDIA</option>
+              <option value="PIPAVAV PORT, INDIA">PIPAVAV PORT, INDIA</option>
+              <option value="KRISHNAPATNAM PORT, INDIA">KRISHNAPATNAM PORT, INDIA</option>
+              <option value="KAMARAJAR PORT, INDIA">KAMARAJAR PORT, INDIA</option>
+            </select>
+          </div>
+          <div class="f"><label>Port of Destination <span>*</span></label><input id="pod" placeholder="e.g. HAI PHONG PORT VIETNAM"/></div>
+        </div>
+      </div>
+    </div>
+    <div class="br">
+      <button class="btn bs" onclick="go(0)">← Back</button>
+      <button class="btn bp" onclick="go(2)">Next: Goods →</button>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 2: GOODS ═══ -->
+  <div id="s2" style="display:none">
+    <div class="card">
+      <div class="ch"><div class="ci">📦</div><h2>Goods / Line Items</h2></div>
+      <div class="cb">
+        <div style="overflow-x:auto">
+          <table class="gt">
+            <thead><tr>
+              <th style="width:26px">#</th>
+              <th style="min-width:200px">Description</th>
+              <th style="width:90px">HS Code</th>
+              <th style="width:80px">Unit</th>
+              <th style="width:80px">Qty</th>
+              <th style="width:100px">Rate/Unit (USD)</th>
+              <th style="width:100px">Amount (USD)</th>
+              <th style="width:32px"></th>
+            </tr></thead>
+            <tbody id="goodsBody"></tbody>
+          </table>
+        </div>
+        <button class="add-btn" onclick="addGoodsRow()">＋ Add Item</button>
+        <div style="margin-top:18px;padding:14px 16px;background:#f0f4ff;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:.85rem;color:var(--navy);font-weight:600">GRAND TOTAL (USD)</span>
+          <span id="grandTotalDisplay" style="font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--navy)">$ 0.00</span>
+        </div>
+      </div>
+    </div>
+    <div class="br">
+      <button class="btn bs" onclick="go(1)">← Back</button>
+      <button class="btn bp" onclick="go(3)">Next: Packing →</button>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 3: PACKING & GENERATE ═══ -->
+  <div id="s3" style="display:none">
+    <div class="card">
+      <div class="ch"><div class="ci">📋</div><h2>Packing &amp; Weight Details</h2></div>
+      <div class="cb">
+        <div class="g4">
+          <div class="f"><label>Gross Weight (KGS)</label><input class="mono" id="grossWt" placeholder="28,199.50"/></div>
+          <div class="f"><label>Net Weight (KGS)</label><input class="mono" id="netWt" placeholder="28,000.00"/></div>
+          <div class="f"><label>No. of Packages</label><input class="mono" id="pkgCount" placeholder="35"/></div>
+          <div class="f"><label>Package Type</label><input id="pkgType" placeholder="JUMBO BAGS"/></div>
+        </div>
+        <div class="g3" style="margin-top:14px">
+          <div class="f"><label>Packing Description</label><textarea id="pkgDesc" placeholder="800 KG JUMBO BAGS">800 KG JUMBO BAGS</textarea></div>
+          <div class="f"><label>Total Packing Summary</label><textarea id="pkgTotal" placeholder="35 JUMBO BAGS 800 KG EACH ON 18 PALLETS">35 JUMBO BAGS 800 KG EACH ON 18 PALLETS</textarea></div>
+          <div class="f"><label>Marking</label><textarea id="marking" placeholder="e.g. OMI 1-18">OMI 1-18</textarea></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ch"><div class="ci">👁</div><h2>Summary</h2></div>
+      <div class="cb">
+        <div class="sg" id="summaryGrid"></div>
+        <div class="grand-box">
+          <div>
+            <div style="font-size:.83rem;opacity:.8">Grand Total</div>
+            <div class="grand-amt" id="summGrand">$ 0.00</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:.72rem;opacity:.7;margin-bottom:3px">Invoice No.</div>
+            <div id="summInv" style="font-family:'JetBrains Mono',monospace;font-size:.9rem"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="br">
+      <button class="btn bs" onclick="go(2)">← Back</button>
+      <button class="btn bg" id="genBtn" onclick="makePDF()">⬇ Download Commercial Invoice + Packing List (PDF)</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span id="tIco">✓</span> <span id="tMsg"></span></div>
+
+<script>
+const SIG = "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";
+let step = 0;
+let goodsRows = [
+  {desc:"STEAM ACTIVATED CARBON\nSIZE: 200 MESH", hscode:"38021000", unit:"METRIC TONNES", qty:28, rate:420}
+];
+
+const g   = id => (document.getElementById(id)?.value || "").trim().toUpperCase();
+const gr  = id => document.getElementById(id)?.value || "";
+const fmt = n  => Number(n).toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2});
+
+function go(n) {
+  if (n > step && !chk(step)) return;
+  document.getElementById("s"+step).style.display = "none";
+  step = n;
+  document.getElementById("s"+step).style.display = "";
+  document.querySelectorAll(".stp").forEach((s,i) => s.className = "stp"+(i===n?" on":i<n?" dn":""));
+  if (n===2) rebuildGoods();
+  if (n===3) buildSummary();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+function chk(n) {
+  const req = {
+    0: ["invNo","invDate","inco"],
+    1: ["notifyName","pod"],
+    2: [],
+  };
+  for (const id of (req[n]||[])) {
+    const el = document.getElementById(id);
+    if (!el?.value?.trim()) { toast("Fill all required fields","err"); el?.focus(); return false; }
+  }
+  return true;
+}
+
+function toggleConsignee() {
+  const v = document.getElementById("consigneeType").value;
+  document.getElementById("consigneeNameField").style.display = v==="named" ? "" : "none";
+}
+
+function computeGrandTotal() {
+  return goodsRows.reduce((s,r) => s + (parseFloat(r.qty)||0)*(parseFloat(r.rate)||0), 0);
+}
+
+function rebuildGoods() {
+  const tbody = document.getElementById("goodsBody");
+  tbody.innerHTML = "";
+  goodsRows.forEach((r,i) => {
+    const amt = (parseFloat(r.qty)||0)*(parseFloat(r.rate)||0);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td style="text-align:center;color:var(--muted);font-size:.75rem">${i+1}</td>
+      <td><textarea style="min-height:48px;resize:vertical" oninput="goodsRows[${i}].desc=this.value">${r.desc}</textarea></td>
+      <td><input class="mono" value="${r.hscode}" oninput="goodsRows[${i}].hscode=this.value" style="width:86px"/></td>
+      <td><input value="${r.unit}" oninput="goodsRows[${i}].unit=this.value.toUpperCase();this.value=this.value.toUpperCase()"/></td>
+      <td><input class="mono" type="number" value="${r.qty}" oninput="goodsRows[${i}].qty=this.value;updateTotals()" style="width:76px"/></td>
+      <td><input class="mono" type="number" value="${r.rate}" oninput="goodsRows[${i}].rate=this.value;updateTotals()" style="width:96px"/></td>
+      <td class="mono" style="text-align:right;font-weight:600">$ ${fmt(amt)}</td>
+      <td><button class="del-btn" onclick="goodsRows.splice(${i},1);rebuildGoods()">✕</button></td>`;
+    tbody.appendChild(tr);
+  });
+  updateTotals();
+}
+
+function updateTotals() {
+  const total = computeGrandTotal();
+  document.getElementById("grandTotalDisplay").textContent = "$ "+fmt(total);
+}
+
+function addGoodsRow() {
+  goodsRows.push({desc:"", hscode:"", unit:"METRIC TONNES", qty:0, rate:0});
+  rebuildGoods();
+}
+
+function buildSummary() {
+  const total = computeGrandTotal();
+  document.getElementById("summaryGrid").innerHTML = [
+    {t:"Invoice", h:`<p><strong>${g("invNo")}</strong><br>Date: ${fd(gr("invDate"))}<br>Contract: ${gr("ctNo")}</p>`},
+    {t:"Consignee / Notify", h:`<p>${gr("notifyName")}<br>Tax: ${gr("notifyTax")}</p>`},
+    {t:"Ports", h:`<p>Loading: ${gr("pol")}<br>Destination: ${gr("pod")}</p>`},
+    {t:"Goods", h:`<p>${goodsRows.length} line item(s)<br>Total: $ ${fmt(total)}</p>`},
+  ].map(b=>`<div class="sb"><h4>${b.t}</h4>${b.h}</div>`).join("");
+  document.getElementById("summGrand").textContent = "$ "+fmt(total);
+  document.getElementById("summInv").textContent = g("invNo");
+}
+
+function fd(d) {
+  if (!d) return "-";
+  const [y,m,dy] = d.split("-");
+  return `${dy}.${m}.${y}`;
+}
+function fdLong(d) {
+  if (!d) return "-";
+  const [y,m,dy] = d.split("-");
+  const M = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  return `${parseInt(dy)} ${M[+m-1]} ${y}`;
+}
+
+function toast(msg, type) {
+  const el=document.getElementById("toast");
+  el.style.background = type==="err"?"#DC2626":"#1a237e";
+  document.getElementById("tIco").textContent = type==="err"?"✕":"✓";
+  document.getElementById("tMsg").textContent = msg;
+  el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),3000);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PDF GENERATION
+// ═══════════════════════════════════════════════════════════════════════════
+function makePDF() {
+  const btn = document.getElementById("genBtn");
+  btn.disabled=true; btn.textContent="⏳ Generating PDF...";
+  setTimeout(() => {
+    try {
+      const {jsPDF} = window.jspdf;
+      const doc = new jsPDF({orientation:"portrait", unit:"mm", format:"a4"});
+      const PW=210, PH=297, ML=12, MR=12, MT=10, CW=PW-ML-MR;
+
+      // ── Helpers ────────────────────────────────────────────────────────
+      const fc  = c => doc.setFillColor(...c);
+      const sc  = c => doc.setDrawColor(...c);
+      const tc  = c => doc.setTextColor(...c);
+      const fn  = (s,st="normal") => { doc.setFontSize(s); doc.setFont("helvetica",st); };
+      const box = (x,y,w,h,fill,stroke) => {
+        if(fill){ fc(fill); doc.rect(x,y,w,h,"F"); }
+        if(stroke){ sc(stroke); doc.setLineWidth(.2); doc.rect(x,y,w,h,"S"); }
+      };
+      const ln  = (x1,y1,x2,y2,w=.3,c=[0,0,0]) => { sc(c); doc.setLineWidth(w); doc.line(x1,y1,x2,y2); };
+      const txt = (t,x,y,opts={}) => {
+        if(opts.color) tc(opts.color); else tc([0,0,0]);
+        doc.text(String(t),x,y,{align:opts.align||"left",maxWidth:opts.mw||999});
+      };
+      const wrapTxt = (t,x,y,mw,lh=3.8) => {
+        doc.splitTextToSize(String(t),mw).forEach((l,i) => doc.text(l,x,y+i*lh));
+      };
+
+      const NAVY=[26,35,126], ORANGE=[230,81,0], BLACK=[0,0,0], WHITE=[255,255,255];
+      const LGRAY=[245,245,245], MGRAY=[200,200,200], MID=[100,100,100], GOLD=[183,110,0];
+      const LBLUE=[232,236,255];
+
+      // ── Data ──────────────────────────────────────────────────────────
+      const invNo   = g("invNo");
+      const invDate = fd(gr("invDate"));
+      const ctNo    = gr("ctNo").toUpperCase();
+      const ctDate  = fd(gr("ctDate"));
+      const ctType  = g("ctType");
+      const inco    = g("inco");
+      const payT    = gr("payTerms").toUpperCase();
+      const consType= gr("consigneeType");
+      const consStr = consType==="order" ? "TO THE ORDER" : gr("consigneeName").toUpperCase();
+      const notify  = gr("notifyName").toUpperCase();
+      const notifyAddr = gr("notifyAddr").toUpperCase();
+      const notifyTax  = gr("notifyTax");
+      const coo     = g("coo");
+      const pol     = gr("pol").toUpperCase();
+      const pod     = g("pod");
+      const grossWt = gr("grossWt");
+      const netWt   = gr("netWt");
+      const pkgCount= gr("pkgCount");
+      const pkgType = g("pkgType");
+      const pkgDesc = gr("pkgDesc").toUpperCase();
+      const pkgTotal= gr("pkgTotal").toUpperCase();
+      const marking = gr("marking").toUpperCase();
+      const grandTotal = computeGrandTotal();
+
+      // ════════════════════════════════════════════════════════════════════
+      // PAGE 1: COMMERCIAL INVOICE
+      // ════════════════════════════════════════════════════════════════════
+      const drawPage = (isPackingList) => {
+        let Y = MT;
+
+        // HEADER — Company name
+        fn(20,"bold"); tc(BLACK);
+        doc.text("MICBAC INDIA (OPC) PVT. LTD.",PW/2,Y+8,{align:"center"});
+        fn(9,"normal"); tc(MID);
+        doc.text("C/314 LOHARUKA GREEN OASIS, KAIKHALI, KOLKATA - 700052",PW/2,Y+14,{align:"center"});
+        Y+=16;
+        ln(ML,Y,ML+CW,Y,.3,MGRAY); Y+=2;
+        fn(7,"normal"); tc(MID);
+        doc.text("GST NUMBER - 19AANCM7741C1Z8",ML,Y+4);
+        doc.text("MSME REGN. NO : UDYAM-WB-14-0002339",ML+CW,Y+4,{align:"right"});
+        Y+=8; ln(ML,Y,ML+CW,Y,.5,BLACK); Y+=3;
+
+        // DOCUMENT TITLE
+        fn(13,"bold"); tc(BLACK);
+        doc.text(isPackingList?"PACKING LIST":"COMMERCIAL INVOICE",PW/2,Y+6,{align:"center"});
+        Y+=10;
+
+        // MAIN GRID — Left: Exporter+Consignee | Right: Invoice meta
+        const leftW=90, rightW=CW-leftW-2;
+        const gridTop=Y;
+
+        // Left column boxes
+        // Exporter box
+        box(ML,Y,leftW,28,LBLUE); ln(ML,Y,ML+leftW,Y+28,.2,MGRAY);
+        fn(6.5,"bold"); tc(NAVY); doc.text("EXPORTER",ML+2,Y+5);
+        fn(7.5,"bold"); tc(BLACK); doc.text("MICBAC India (OPC) PVT. LTD.",ML+2,Y+10);
+        fn(6.5,"normal"); tc(BLACK);
+        doc.text("C/314 LOHARUKA GREEN OASIS, KAIKHALI, KOLKATA - 700052",ML+2,Y+14.5,{maxWidth:leftW-4});
+        doc.text("INDIA",ML+2,Y+18.5);
+        doc.text("IEC - AANCM7741C",ML+2,Y+22.5);
+        doc.text("GST NUMBER : 19AANCM7741C1Z8",ML+2,Y+26);
+        doc.text("LUT NO AD190425002007H",ML+2,Y+29.5);
+        Y+=32;
+
+        // Consignee box
+        box(ML,Y,leftW,10,LBLUE); ln(ML,Y,ML+leftW,Y+10,.2,MGRAY);
+        fn(6.5,"bold"); tc(NAVY); doc.text("CONSIGNEE:",ML+2,Y+4.5);
+        fn(6.5,"normal"); tc(BLACK); doc.text(consStr,ML+2+22,Y+4.5,{maxWidth:leftW-26});
+        Y+=11;
+
+        // Notify party box
+        const notifyH = 20 + doc.splitTextToSize(notify,leftW-4).length*3.5;
+        box(ML,Y,leftW,notifyH,[255,255,255]); ln(ML,Y,ML+leftW,Y+notifyH,.2,MGRAY);
+        fn(6.5,"bold"); tc(BLACK); doc.text("NOTIFY PARTY:",ML+2,Y+5);
+        fn(6.5,"bold"); tc(BLACK); wrapTxt(notify,ML+2,Y+9.5,leftW-4,3.8);
+        const notifyLines = doc.splitTextToSize(notify,leftW-4).length;
+        fn(6,"normal"); tc(MID);
+        wrapTxt("Address: "+notifyAddr,ML+2,Y+9.5+notifyLines*3.8+1,leftW-4,3.5);
+        Y+=notifyH+1;
+
+        // Tax code
+        box(ML,Y,leftW,8,[255,255,255]); ln(ML,Y,ML+leftW,Y+8,.2,MGRAY);
+        fn(6.5,"normal"); tc(BLACK);
+        doc.text("TAX CODE - "+notifyTax,ML+2,Y+5);
+        Y+=9;
+
+        // Right column — invoice meta
+        let RY = gridTop;
+        const RX = ML+leftW+2;
+        const metaRows = [
+          ["INVOICE NUMBER : "+invNo, true],
+          ["INVOICE DATE : "+invDate, false],
+          ["CONTRACT NO : "+ctNo, false],
+          ["CONTRACT DATE : "+ctDate, false],
+          ["CONTAINER TYPE : "+ctType, false],
+          ["COUNTRY OF ORIGIN OF GOODS : "+coo, false],
+          ["PORT OF LOADING : "+pol, false],
+          ["PORT OF DESTINATION : "+pod, false],
+          ["INCO TERMS : "+inco, false],
+        ];
+        metaRows.forEach((m,i) => {
+          const rh = i===0?8:7;
+          if(i===0){ box(RX,RY,rightW,rh,ORANGE); fn(6.5,"bold"); tc(WHITE); }
+          else{ box(RX,RY,rightW,rh,i%2===0?[255,255,255]:LGRAY); fn(6.5,i===5?"bold":"normal"); tc(BLACK); }
+          wrapTxt(m[0],RX+2,RY+4.5,rightW-4,3.5);
+          RY+=rh;
+        });
+        // Payment terms
+        box(RX,RY,rightW,10,[255,245,220]);
+        fn(6,"bold"); tc(ORANGE); doc.text("PAYMENT TERMS:",RX+2,RY+4.5);
+        fn(6,"normal"); tc(BLACK); wrapTxt(payT,RX+2,RY+8,rightW-4,3.5);
+        RY+=11;
+
+        // Move Y to below both columns
+        Y = Math.max(Y,RY)+2;
+
+        // GOODS TABLE
+        const colW = isPackingList
+          ? [8, 60, 22, 22, 22, 52]   // SL | DESC | HS | UNIT | QTY | GWT
+          : [8, 60, 22, 22, 22, 22, 22]; // SL | DESC | HS | UNIT | QTY | RATE | AMT
+        const hdrs = isPackingList
+          ? ["SL NO","DESCRIPTION","HS CODE","UNIT","QTY.","GROSS WEIGHT"]
+          : ["SL NO","DESCRIPTION","HS CODE","UNIT","QTY","RATE/MT","AMOUNT"];
+
+        box(ML,Y,CW,8,ORANGE);
+        let cx=ML;
+        hdrs.forEach((h,i) => {
+          fn(6.5,"bold"); tc(WHITE);
+          doc.text(h,cx+colW[i]/2,Y+5,{align:"center",maxWidth:colW[i]-2});
+          cx+=colW[i];
+        });
+        Y+=8;
+
+        goodsRows.forEach((r,ri) => {
+          const descLines = doc.splitTextToSize(r.desc.toUpperCase(),colW[1]-4);
+          const rowH = Math.max(14, descLines.length*4+6);
+          box(ML,Y,CW,rowH,ri%2===0?[255,255,255]:LGRAY); ln(ML,Y,ML+CW,Y+rowH,.1,MGRAY);
+          fn(6,"normal"); tc(BLACK);
+          cx=ML;
+          const amt = (parseFloat(r.qty)||0)*(parseFloat(r.rate)||0);
+          const vals = isPackingList
+            ? [String(ri+1), r.desc.toUpperCase(), r.hscode, r.unit.toUpperCase(), String(r.qty), grossWt+" KGS"]
+            : [String(ri+1), r.desc.toUpperCase(), r.hscode, r.unit.toUpperCase(), String(r.qty), "$"+fmt(r.rate)+"/MT", "$"+fmt(amt)];
+          vals.forEach((v,vi) => {
+            const isRight = vi>=4;
+            wrapTxt(v, isRight?cx+colW[vi]-2:cx+2, Y+5, colW[vi]-3, 3.8);
+            cx+=colW[vi];
+          });
+          Y+=rowH;
+        });
+
+        // Totals rows
+        if (!isPackingList) {
+          const tRows=[
+            ["QTY TOTAL", goodsRows.reduce((s,r)=>s+(parseFloat(r.qty)||0),0)+" METRIC TONNES", "TOTAL IN $", "$"+fmt(grandTotal)],
+            ["","","R. OFF (-/+)","$"],
+            ["MARKING: "+marking+"\nTOTAL: "+pkgTotal,"","GRAND TOTAL","$"+fmt(grandTotal)],
+          ];
+          tRows.forEach((tr,ti) => {
+            const rowH = ti===2?14:8;
+            box(ML,Y,CW,rowH,LGRAY); ln(ML,Y,ML+CW,Y+rowH,.1,MGRAY);
+            fn(6,"normal"); tc(BLACK);
+            if(ti===0){
+              fn(6,"bold"); doc.text("QTY TOTAL",ML+2,Y+5);
+              doc.text(String(goodsRows.reduce((s,r)=>s+(parseFloat(r.qty)||0),0))+" METRIC TONNES",ML+18,Y+5);
+              doc.text("TOTAL IN $",ML+CW-44,Y+5);
+              fn(7,"bold"); tc(ORANGE); doc.text("$"+fmt(grandTotal),ML+CW-2,Y+5,{align:"right"});
+            } else if(ti===1){
+              tc(BLACK); fn(6,"normal");
+              doc.text("R. OFF (-/+)",ML+CW-44,Y+5);
+              doc.text("$",ML+CW-2,Y+5,{align:"right"});
+            } else {
+              fn(6,"normal"); tc(BLACK);
+              wrapTxt("MARKING: "+marking,ML+2,Y+4,70,3.5);
+              fn(6,"bold"); doc.text("TOTAL: "+pkgTotal,ML+2,Y+10,{maxWidth:70});
+              doc.text("GRAND TOTAL",ML+CW-44,Y+6);
+              fn(8,"bold"); tc(ORANGE); doc.text("$"+fmt(grandTotal),ML+CW-2,Y+6,{align:"right"});
+            }
+            Y+=rowH;
+          });
+        } else {
+          // Packing list totals
+          box(ML,Y,CW,10,LGRAY); ln(ML,Y,ML+CW,Y+10,.1,MGRAY);
+          fn(6,"normal"); tc(BLACK);
+          doc.text("MARKING: "+marking,ML+2,Y+4);
+          fn(6,"bold"); doc.text("PACKING: "+pkgDesc,ML+2,Y+8);
+          Y+=10;
+          box(ML,Y,CW,8,LGRAY); ln(ML,Y,ML+CW,Y+8,.1,MGRAY);
+          fn(6,"bold"); doc.text("TOTAL: "+pkgTotal,ML+2,Y+5);
+          Y+=8;
+          // Weight rows
+          box(ML,Y,colW[0]+colW[1]+colW[2],12,[255,255,255]); ln(ML,Y,ML+CW,Y+12,.1,MGRAY);
+          fn(6.5,"bold"); tc(BLACK);
+          doc.text("GROSS WEIGHT: "+grossWt+" KGS",ML+2,Y+5);
+          doc.text("NET WEIGHT: "+netWt+" KGS",ML+2,Y+9.5);
+          // Total col
+          box(ML+colW[0]+colW[1]+colW[2],Y,colW[3]+colW[4]+colW[5],12,LGRAY);
+          doc.text("TOTAL",ML+colW[0]+colW[1]+colW[2]+2,Y+5);
+          fn(6.5,"bold"); doc.text(pkgCount+" "+pkgType,ML+colW[0]+colW[1]+colW[2]+colW[3]+2,Y+5);
+          fn(6.5,"bold"); doc.text(grossWt+" KGS",ML+CW-2,Y+5,{align:"right"});
+          Y+=12;
+        }
+
+        // E.&O.E
+        fn(6,"normal"); tc(MID); doc.text("E. & O.E",ML+CW,Y+5,{align:"right"}); Y+=8;
+        ln(ML,Y,ML+CW,Y,.3,MGRAY); Y+=2;
+
+        if(!isPackingList) {
+          // BANK INFO
+          fn(7,"bold"); tc(BLACK); doc.text("BENEFICIARY BANK INFO",ML,Y+5);
+          fn(6,"normal"); tc(MID); doc.text("(underlined)",ML+42,Y+5);
+          ln(ML,Y+6,ML+40,Y+6,.3,BLACK); Y+=9;
+          const bankLines=[
+            "Account holder name: MICBAC INDIA (OPC) PRIVATE LIMITED",
+            "Payment method: SWIFT (International wire)",
+            "IBAN (Account number): GB82TCCL04140412569422",
+            "BIC/SWIFT code: TCCLGB3L",
+            "Bank name: The Currency Cloud Limited",
+            "Beneficiary address: 12 Steward Street, The Steward Building, London, E1 6FQ, Great Britain",
+            "Beneficiary bank country: United Kingdom",
+          ];
+          fn(6.5,"normal"); tc(BLACK);
+          bankLines.forEach(l => { doc.text(l,ML+4,Y+4); Y+=4.5; });
+          Y+=3;
+        }
+
+        // SIGNATURE BLOCK
+        const sigY=Y;
+        fn(7,"bold"); tc(BLACK); doc.text("FOR",ML+CW,sigY+4,{align:"right"});
+        doc.addImage("data:image/jpeg;base64,"+SIG,"JPEG",ML+CW-52,sigY+6,52,26);
+        fn(6.5,"bold"); tc(BLACK); doc.text("MICBAC INDIA (OPC) PVT. LTD.",ML+CW,sigY+34,{align:"right"});
+        Y=sigY+38;
+
+        // DECLARATION
+        ln(ML,Y,ML+CW,Y,.3,MGRAY); Y+=3;
+        fn(6.5,"bold"); tc(BLACK); doc.text("DECLARATION",ML,Y+4); Y+=8;
+        fn(6,"normal"); tc(BLACK);
+        doc.text("We declare that the above information is true and correct to the best of our knowledge.",ML,Y+1,{maxWidth:CW}); Y+=7;
+
+        // T&C
+        fn(6.5,"bold"); tc(BLACK); doc.text("TERMS AND CONDITIONS",ML,Y+4); Y+=8;
+        fn(6,"normal"); tc(BLACK);
+        ["We are not responsible for any transit damage, loss or leakage",
+         "MICBAC INDIA (OPC) PVT. LTD. is registered under the MSMED Act, 2006."
+        ].forEach(t => { doc.text("•  "+t,ML,Y+1,{maxWidth:CW}); Y+=5; });
+      };
+
+      // Draw page 1 - Commercial Invoice
+      drawPage(false);
+
+      // PAGE 2 - Packing List
+      doc.addPage();
+      drawPage(true);
+
+      // Save
+      const fname = (invNo||"MICBAC-INVOICE").replace(/\//g,"-")+".pdf";
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if(isMobile){
+        const blob=doc.output("blob");
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");
+        a.href=url; a.target="_blank"; a.rel="noopener";
+        document.body.appendChild(a); a.click();
+        setTimeout(()=>{URL.revokeObjectURL(url);document.body.removeChild(a);},3000);
+        toast("PDF opened — tap Share → Save to Files","ok");
+      } else {
+        doc.save(fname);
+        toast("PDF downloaded!","ok");
+      }
+
+    } catch(e) {
+      console.error(e); toast("Error: "+e.message,"err");
+    } finally {
+      btn.disabled=false; btn.textContent="⬇ Download Commercial Invoice + Packing List (PDF)";
+    }
+  }, 100);
+}
+
+// Init
+rebuildGoods();
+</script>
+</body>
+</html>

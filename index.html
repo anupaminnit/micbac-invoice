@@ -128,22 +128,47 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
 
 /* ── SEARCHABLE PORT PICKER ── */
 .port-picker{position:relative;width:100%}
-.port-picker input{width:100%;border:1.5px solid var(--border);border-radius:var(--r);padding:10px 13px;font-family:"DM Sans",sans-serif;font-size:.86rem;color:var(--text);background:var(--white);transition:.18s;cursor:pointer}
-.port-picker input:focus{outline:none;border-color:var(--org);box-shadow:0 0 0 3px rgba(214,90,13,.12)}
-.port-picker input::placeholder{color:var(--muted)}
-.port-dropdown{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--white);border:1.5px solid var(--org);border-radius:var(--r);z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.14);max-height:220px;overflow:hidden;flex-direction:column}
+.port-trigger{
+  width:100%;border:1.5px solid var(--border);border-radius:var(--r);
+  padding:10px 36px 10px 13px;font-family:"DM Sans",sans-serif;font-size:.86rem;
+  color:var(--text);background:var(--white);transition:.18s;cursor:pointer;
+  text-align:left;display:block;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;min-height:40px;line-height:1.4
+}
+.port-trigger.placeholder-text{color:var(--muted)}
+.port-trigger::after{
+  content:"▾";position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  color:var(--muted);font-size:.85rem;pointer-events:none
+}
+.port-picker:focus-within .port-trigger{border-color:var(--org);box-shadow:0 0 0 3px rgba(214,90,13,.12)}
+.port-dropdown{
+  display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;
+  background:var(--white);border:1.5px solid var(--org);border-radius:var(--r);
+  z-index:9999;box-shadow:0 8px 28px rgba(0,0,0,.16);
+  max-height:260px;flex-direction:column
+}
 .port-dropdown.open{display:flex}
-.port-search{padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
-.port-search input{width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 10px;font-size:.83rem;font-family:"DM Sans",sans-serif}
-.port-search input:focus{outline:none;border-color:var(--org)}
-.port-list{overflow-y:auto;flex:1}
-.port-list .port-opt{padding:8px 12px;font-size:.82rem;cursor:pointer;border-bottom:1px solid var(--border);transition:background .12s;display:flex;gap:10px;align-items:baseline}
-.port-list .port-opt:last-child{border:none}
-.port-list .port-opt:hover,.port-list .port-opt.highlighted{background:var(--lorg)}
-.port-list .port-opt .port-code{font-family:"JetBrains Mono",monospace;font-size:.76rem;color:var(--org);font-weight:700;min-width:46px}
-.port-list .port-opt .port-name{color:var(--text)}
-.port-list .port-opt .port-country{color:var(--muted);font-size:.75rem;margin-left:auto}
-.port-list .no-results{padding:12px;text-align:center;color:var(--muted);font-size:.82rem}
+.port-search-wrap{padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--white);border-radius:var(--r) var(--r) 0 0}
+.port-search-wrap input{
+  width:100%;border:1.5px solid var(--border);border-radius:6px;
+  padding:7px 10px 7px 28px;font-size:.83rem;font-family:"DM Sans",sans-serif;
+  background:var(--light);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23999' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:8px center;
+}
+.port-search-wrap input:focus{outline:none;border-color:var(--org);background-color:var(--white)}
+.port-list{overflow-y:auto;flex:1;overscroll-behavior:contain}
+.port-opt{
+  padding:8px 12px;font-size:.82rem;cursor:pointer;
+  border-bottom:1px solid var(--border);transition:background .1s;
+  display:flex;gap:8px;align-items:center
+}
+.port-opt:last-child{border:none}
+.port-opt:hover{background:var(--lorg)}
+.port-opt.active{background:var(--lorg);font-weight:600}
+.port-code{font-family:"JetBrains Mono",monospace;font-size:.74rem;color:var(--org);font-weight:700;min-width:50px;flex-shrink:0}
+.port-name{color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.port-country{color:var(--muted);font-size:.72rem;flex-shrink:0;white-space:nowrap}
+.port-no-results{padding:14px;text-align:center;color:var(--muted);font-size:.82rem;font-style:italic}
 </style>
 </head>
 <body>
@@ -281,20 +306,24 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
         <div class="g2">
           <div class="f"><label>Port of Loading <span>*</span></label>
             <div class="port-picker" id="pol-picker">
-              <input type="text" id="pol-display" placeholder="Search Indian ports..." readonly onclick="togglePortPicker('pol')" autocomplete="off"/>
               <input type="hidden" id="pol"/>
+              <button type="button" class="port-trigger placeholder-text" id="pol-trigger" onclick="togglePortPicker('pol')">Search Indian ports...</button>
               <div class="port-dropdown" id="pol-dropdown">
-                <div class="port-search"><input type="text" placeholder="🔍  Type to search..." oninput="filterPorts('pol',this.value)" id="pol-search" autocomplete="off"/></div>
+                <div class="port-search-wrap">
+                  <input type="text" id="pol-search" placeholder="Type port name, code or country..." autocomplete="off" oninput="filterPorts('pol',this.value)" onkeydown="handlePortKey(event,'pol')"/>
+                </div>
                 <div class="port-list" id="pol-list"></div>
               </div>
             </div>
           </div>
           <div class="f"><label>Port of Destination <span>*</span></label>
             <div class="port-picker" id="pod-picker">
-              <input type="text" id="pod-display" placeholder="Search world ports..." readonly onclick="togglePortPicker('pod')" autocomplete="off"/>
               <input type="hidden" id="pod"/>
+              <button type="button" class="port-trigger placeholder-text" id="pod-trigger" onclick="togglePortPicker('pod')">Search world ports...</button>
               <div class="port-dropdown" id="pod-dropdown">
-                <div class="port-search"><input type="text" placeholder="🔍  Type to search..." oninput="filterPorts('pod',this.value)" id="pod-search" autocomplete="off"/></div>
+                <div class="port-search-wrap">
+                  <input type="text" id="pod-search" placeholder="Type port name, code or country..." autocomplete="off" oninput="filterPorts('pod',this.value)" onkeydown="handlePortKey(event,'pod')"/>
+                </div>
                 <div class="port-list" id="pod-list"></div>
               </div>
             </div>
@@ -1010,42 +1039,62 @@ const WORLD_PORTS = [
 ];
 
 // State
+// ── Port Picker State ─────────────────────────────────────────────────────
 const portPickerState = {};
 
-function renderPortList(id, ports) {
+function renderPortList(id, ports, highlightIdx) {
   const list = document.getElementById(id+'-list');
   if (!ports.length) {
-    list.innerHTML = '<div class="no-results">No ports found</div>';
+    list.innerHTML = '<div class="port-no-results">No ports found. Try a different search.</div>';
     return;
   }
-  list.innerHTML = ports.map((p,i) => `
-    <div class="port-opt${i===0?' highlighted':''}" onclick="selectPort('${id}','${p.code}','${p.name}, ${p.country}')">
+  list.innerHTML = ports.map((p, i) => {
+    const val = p.code + ' — ' + p.name + ', ' + p.country;
+    const isActive = document.getElementById(id).value === val;
+    return `<div class="port-opt${isActive?' active':''}" data-idx="${i}" onmousedown="selectPort('${id}','${p.code}','${p.name}, ${p.country}')">
       <span class="port-code">${p.code}</span>
       <span class="port-name">${p.name}</span>
       <span class="port-country">${p.country}</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+  portPickerState[id].rendered = ports;
 }
 
 function initPortPicker(id, ports) {
-  portPickerState[id] = { ports, filtered: ports };
+  portPickerState[id] = { ports, rendered: [] };
   renderPortList(id, ports);
-  // Close on outside click
-  document.addEventListener('click', e => {
-    if (!document.getElementById(id+'-picker').contains(e.target)) {
-      document.getElementById(id+'-dropdown').classList.remove('open');
+  // Single delegated outside-click handler
+  document.addEventListener('mousedown', e => {
+    const picker = document.getElementById(id+'-picker');
+    if (picker && !picker.contains(e.target)) {
+      closePortPicker(id);
     }
-  }, true);
+  });
+}
+
+function openPortPicker(id) {
+  // Close others first
+  ['pol','pod'].forEach(other => { if (other !== id) closePortPicker(other); });
+  const dd = document.getElementById(id+'-dropdown');
+  dd.classList.add('open');
+  const search = document.getElementById(id+'-search');
+  search.value = '';
+  renderPortList(id, portPickerState[id].ports);
+  // Use requestAnimationFrame to ensure dropdown is rendered before focusing
+  requestAnimationFrame(() => { search.focus(); });
+}
+
+function closePortPicker(id) {
+  const dd = document.getElementById(id+'-dropdown');
+  if (dd) dd.classList.remove('open');
 }
 
 function togglePortPicker(id) {
   const dd = document.getElementById(id+'-dropdown');
-  const isOpen = dd.classList.contains('open');
-  // Close all others
-  document.querySelectorAll('.port-dropdown').forEach(d => d.classList.remove('open'));
-  if (!isOpen) {
-    dd.classList.add('open');
-    const search = document.getElementById(id+'-search');
-    if (search) { search.value=''; filterPorts(id,''); setTimeout(()=>search.focus(),50); }
+  if (dd.classList.contains('open')) {
+    closePortPicker(id);
+  } else {
+    openPortPicker(id);
   }
 }
 
@@ -1060,20 +1109,30 @@ function filterPorts(id, query) {
   renderPortList(id, filtered);
 }
 
-function selectPort(id, code, label) {
-  document.getElementById(id).value = label;
-  document.getElementById(id+'-display').value = code + ' — ' + label;
-  document.getElementById(id+'-dropdown').classList.remove('open');
+function handlePortKey(e, id) {
+  if (e.key === 'Escape') { closePortPicker(id); }
+  if (e.key === 'Enter') {
+    const rendered = portPickerState[id].rendered;
+    if (rendered && rendered.length > 0) {
+      selectPort(id, rendered[0].code, rendered[0].name + ', ' + rendered[0].country);
+    }
+  }
 }
 
-// Override the g() function to handle port hidden inputs properly
-// (already handled since hidden input has same id)
+function selectPort(id, code, label) {
+  const val = code + ' — ' + label;
+  document.getElementById(id).value = label;
+  const trigger = document.getElementById(id+'-trigger');
+  trigger.textContent = val;
+  trigger.classList.remove('placeholder-text');
+  closePortPicker(id);
+}
 
-// Init pickers when DOM ready
+// Init pickers on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
   initPortPicker('pol', INDIAN_PORTS);
   initPortPicker('pod', WORLD_PORTS);
-  // Set default POL to Kolkata
+  // Default: Kolkata
   selectPort('pol', 'INCCU', 'Kolkata Port, India');
 });
 

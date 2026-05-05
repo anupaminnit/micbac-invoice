@@ -282,7 +282,7 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
           <div class="f"><label>Bank Account <span>*</span></label>
             <select id="bankAccount" onchange="updateBankPreview()">
               <option value="currency_cloud">🇬🇧 Currency Cloud — SWIFT (International wire)</option>
-              <option value="dbs">🇸🇬 DBS Bank Singapore — FAST / GIRO / MEPS</option>
+              <option value="dbs">🇸🇬 DBS Bank Singapore — FAST / SWIFT / MEPS</option>
               <option value="yes_bank">🇮🇳 YES Bank — Burra Bazar Branch (India)</option>
             </select>
           </div>
@@ -485,7 +485,7 @@ const BANKS = {
       ["IBAN (Account number)",    "GB82TCCL04140412569422"],
       ["BIC/SWIFT code",           "TCCLGB3L"],
       ["Bank name",                "The Currency Cloud Limited"],
-      ["Beneficiary address",      "12 Steward Street, The Steward Building, London, E1 6FQ, Great Britain"],
+      ["Beneficiary Bank address",  "12 Steward Street, The Steward Building, London, E1 6FQ, Great Britain"],
       ["Beneficiary bank country", "United Kingdom"],
     ]
   },
@@ -493,12 +493,12 @@ const BANKS = {
     label: "DBS Bank Limited (Singapore)",
     rows: [
       ["Account holder name", "MICBAC INDIA (OPC) PRIVATE LIMITED"],
-      ["Payment method",      "FAST / GIRO / MEPS"],
+      ["Payment method",      "FAST / SWIFT / MEPS"],
       ["Account currency",    "USD"],
       ["Account number",      "885414962580"],
       ["BIC/SWIFT code",      "DBSSSGSG"],
       ["Bank name",           "DBS Bank Limited"],
-      ["Beneficiary address", "12 Marina Boulevard, Marina Bay Financial Tower 3, Singapore 018982"],
+      ["Beneficiary Bank address", "12 Marina Boulevard, Marina Bay Financial Tower 3, Singapore 018982"],
     ]
   },
   yes_bank: {

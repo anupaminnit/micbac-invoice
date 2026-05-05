@@ -283,6 +283,7 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
             <select id="bankAccount" onchange="updateBankPreview()">
               <option value="currency_cloud">🇬🇧 Currency Cloud — SWIFT (International wire)</option>
               <option value="dbs">🇸🇬 DBS Bank Singapore — FAST / GIRO / MEPS</option>
+              <option value="yes_bank">🇮🇳 YES Bank — Burra Bazar Branch (India)</option>
             </select>
           </div>
           <!-- Payment Terms: free-type + datalist -->
@@ -498,6 +499,17 @@ const BANKS = {
       ["BIC/SWIFT code",      "DBSSSGSG"],
       ["Bank name",           "DBS Bank Limited"],
       ["Beneficiary address", "12 Marina Boulevard, Marina Bay Financial Tower 3, Singapore 018982"],
+    ]
+  },
+  yes_bank: {
+    label: "YES Bank — Burra Bazar Branch (India)",
+    rows: [
+      ["Account holder name", "MICBAC INDIA OPC PRIVATE LIMITED"],
+      ["Account number",      "064663700001906"],
+      ["IFSC code",           "YESB0000646"],
+      ["Bank name",           "YES BANK"],
+      ["Branch",              "BURRA BAZAR"],
+      ["SWIFT code",          "YESBINBB"],
     ]
   }
 };

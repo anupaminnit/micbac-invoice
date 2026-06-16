@@ -585,7 +585,7 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
     </div>
   </div>
   <div class="br" style="margin-top:10px">
-    <button class="btn bg" id="ltrBtn" onclick="makePDF()">&#8659; Download Letter (PDF)</button>
+    <button class="btn bg" id="ltrBtn" onclick="makePDF()">&#8659; Download Letter (PDF)#8659; Open Letter (Print to PDF)</button>
   </div>
 </div>
 
@@ -2036,164 +2036,140 @@ const LH_LOGO = "iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAA/GUlEQVR4Xu2dDbQ
 // ═══════════════════════════════════════════════════════════════════════
 // OFFICIAL LETTER PDF
 // ═══════════════════════════════════════════════════════════════════════
-function buildLetter(jsPDF) {
-  const v   = id => document.getElementById(id)?.value || "";
+function buildLetterHTML() {
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  const v = id => document.getElementById(id)?.value || "";
   const ref     = v("ltrRef") || "MIPLWB/LTR/001/25-26";
   const rawDate = v("ltrDate");
-  const dateStr = rawDate ? rawDate.split("-").reverse().join("/") : new Date().toLocaleDateString("en-IN");
+  const dateStr = rawDate ? rawDate.split("-").reverse().join("/")
+                          : new Date().toLocaleDateString("en-IN");
   const toText  = v("ltrTo");
   const subject = v("ltrSubject");
   const body    = v("ltrBody");
 
-  const doc = new jsPDF({unit:"mm", format:"a4", orientation:"portrait"});
-  const PW=210, PH=297, ML=14, MR=14, CW=PW-ML-MR, RX=PW-MR;
-
-  const BK=[11,11,15], LIME=[200,242,58], WHITE=[255,255,255];
-  const DGRAY=[90,90,90], MGRAY=[170,170,170], SLATE=[28,28,35];
-
-  const fc = c => doc.setFillColor(...c);
-  const tc = c => doc.setTextColor(...c);
-  const sc = c => doc.setDrawColor(...c);
-  const fn = (s,w) => { doc.setFont("helvetica", w||"normal"); doc.setFontSize(s); };
-
-  const HDR_H=30, LIME_STRIP=2.5, REG_H=10, FOOTER_H=10;
-  const FOOTER_Y=PH-FOOTER_H, SIG_NEED=48;
-  const BODY_MAX=FOOTER_Y-SIG_NEED;
-
-  function drawHeader() {
-    fc(LIME); doc.rect(0,0,PW,LIME_STRIP,"F");
-    fc(BK);   doc.rect(0,LIME_STRIP,PW,HDR_H-LIME_STRIP,"F");
-    doc.addImage("data:image/png;base64,"+LTR_LOGO,"PNG",ML,LIME_STRIP+4,18,18);
-    tc(WHITE); fn(11.5,"bold");   doc.text("MICBAC INDIA",ML+21,LIME_STRIP+11);
-    tc(LIME);  fn(6.5,"normal");  doc.text("ACTIVATED CARBON · KOLKATA",ML+21,LIME_STRIP+18);
-    tc(LIME);  fn(6.5,"bold");    doc.text("MICBAC INDIA (OPC) PRIVATE LIMITED",RX,LIME_STRIP+7,{align:"right"});
-    tc(MGRAY); fn(5.5,"normal");  doc.text("C/314 Loharuka Green Oasis, Kaikhali, Kolkata — 700052, West Bengal, India",RX,LIME_STRIP+13,{align:"right"});
-    tc(WHITE); fn(5.5,"normal");  doc.text("E  micbac.india@gmail.com  ·  W  micbacindia.com  ·  T  +91 82688 88827",RX,LIME_STRIP+19,{align:"right"});
-    fc(LIME);  doc.rect(0,HDR_H,PW,1.5,"F");
+  let toHTML = '';
+  if (toText.trim()) {
+    const lines = toText.split("\n").map(l=>esc(l.trim())).filter(l=>l);
+    toHTML = `<div class="to-block"><div class="to-lbl">To,</div>${lines.map(l=>`<div>${l}</div>`).join('')}</div>`;
   }
-
-  function drawRegStrip(startY) {
-    fc(SLATE); doc.rect(0,startY,PW,REG_H,"F");
-    const regs=[["GSTIN","19AANCM7741C1Z8"],["IEC","AANCM7741C"],["MSME","UDYAM-WB-14-0002339"],["LUT NO","AD190326030261F"]];
-    const rW=PW/regs.length;
-    regs.forEach(([k,val],i)=>{
-      const x=i*rW+rW/2;
-      if(i>0){sc(LIME);doc.setLineWidth(0.25);doc.line(i*rW,startY+2,i*rW,startY+REG_H-2);}
-      tc(LIME);  fn(4.5,"bold");   doc.text(k,  x,startY+3.8,{align:"center"});
-      tc(WHITE); fn(5.5,"normal"); doc.text(val,x,startY+8.3,{align:"center"});
-    });
+  let subHTML = '';
+  if (subject.trim()) {
+    subHTML = `<div class="subject"><strong>Sub:</strong> ${esc(subject)}</div>`;
   }
+  const bodyHTML = body.split(/\n\n+/).filter(p=>p.trim()).map(para=>{
+    return `<p class="para">${esc(para.trim()).replace(/\n/g,'<br>')}</p>`;
+  }).join('');
 
-  function drawContHeader() {
-    fc(BK);    doc.rect(0,0,PW,9,"F");
-    fc(LIME);  doc.rect(0,0,PW,1.5,"F");
-    tc(WHITE); fn(7,"bold");   doc.text("MICBAC INDIA (OPC) PVT. LTD.",ML,6.5);
-    tc(LIME);  fn(6,"normal"); doc.text("Ref: "+ref+" — Contd.",RX,6.5,{align:"right"});
-    return 15;
-  }
-
-  function drawFooter() {
-    fc(BK);    doc.rect(0,FOOTER_Y,PW,FOOTER_H,"F");
-    fc(LIME);  doc.rect(0,PH-1.5,PW,1.5,"F");
-    tc(WHITE); fn(5.5,"normal");
-    doc.text("WWW.MICBACINDIA.COM  |  MICBAC.INDIA@GMAIL.COM",PW/2,FOOTER_Y+5.5,{align:"center"});
-  }
-
-  // ── Page 1 ─────────────────────────────────────────────────────────────────
-  drawHeader();
-  const REG_Y = HDR_H+1.5;
-  drawRegStrip(REG_Y);
-  let y = REG_Y+REG_H+7;
-
-  // Ref & Date
-  tc(BK); fn(9,"normal");
-  doc.text("Ref: "+ref,ML,y);
-  doc.text("Date: "+dateStr,RX,y,{align:"right"});
-  y+=9;
-
-  // To block
-  if(toText.trim()){
-    tc(DGRAY); fn(7.5,"normal"); doc.text("To,",ML,y); y+=4.5;
-    toText.split("\n").map(l=>l.trim()).filter(l=>l).forEach(line=>{
-      tc(BK); fn(9,"normal"); doc.text(line,ML,y); y+=4.8;
-    });
-    y+=4;
-  }
-
-  // Subject
-  if(subject.trim()){
-    tc(BK); fn(9.5,"bold");
-    const subLabel="Sub: ", subLW=doc.getTextWidth(subLabel);
-    doc.text(subLabel,ML,y);
-    fn(9.5,"normal");
-    const subLines=doc.splitTextToSize(subject,CW-subLW);
-    doc.text(subLines,ML+subLW,y);
-    y+=subLines.length*5.2+6;
-  }
-
-  // Body paragraphs — page-break aware
-  tc(BK); fn(9.5,"normal");
-  body.split(/\n\n+/).forEach(para=>{
-    if(!para.trim()){y+=4;return;}
-    const lines=doc.splitTextToSize(para.trim(),CW);
-    lines.forEach(line=>{
-      if(y+5.2>BODY_MAX){
-        drawFooter();
-        doc.addPage();
-        y=drawContHeader();
-        tc(BK);fn(9.5,"normal");
-      }
-      doc.text(line,ML,y);
-      y+=5.2;
-    });
-    y+=5;
-  });
-
-  // ── Signatory ───────────────────────────────────────────────────────────────
-  if(y+SIG_NEED>FOOTER_Y){
-    drawFooter();
-    doc.addPage();
-    y=drawContHeader();
-  }
-  // Anchor to bottom if there's spare space
-  y=Math.max(y, FOOTER_Y-SIG_NEED);
-
-  tc(BK); fn(9,"normal"); doc.text("Yours faithfully,",ML,y); y+=8;
-
-  // Seal — 1342×387 landscape
-  const sW=55, sH=Math.round(sW*(387/1342)*10)/10;
-  doc.addImage("data:image/jpeg;base64,"+SIG,"JPEG",ML,y,sW,sH);
-  y+=sH+4;
-
-  sc(BK); doc.setLineWidth(0.3); doc.line(ML,y,ML+78,y); y+=4.5;
-  tc(BK);    fn(9,"bold");    doc.text("For MICBAC INDIA (OPC) PVT. LTD.",ML,y); y+=5;
-  fn(8.5,"normal");           doc.text("Nilesh Gupta",ML,y); y+=4.5;
-  tc(DGRAY); fn(7.5,"normal");doc.text("DIRECTOR",ML,y);
-
-  drawFooter();
-  return doc;
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Micbac India — Official Letter</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:10pt;color:#0b0b0f;background:#fff}
+@page{size:A4;margin:0}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+.page{width:210mm;min-height:297mm;margin:0 auto;display:flex;flex-direction:column}
+/* header */
+.hl{background:#c8f23a;height:2.5mm}
+.hd{background:#0b0b0f;display:flex;justify-content:space-between;align-items:center;padding:4mm 14mm 5mm;gap:4mm}
+.hleft{display:flex;align-items:center;gap:6mm}
+.logo{width:18mm;height:18mm;object-fit:contain}
+.cname{color:#fff;font-size:13pt;font-weight:700;margin-bottom:1.5mm}
+.ctag{color:#c8f23a;font-size:6.5pt;letter-spacing:.4pt}
+.hright{text-align:right}
+.cfull{color:#c8f23a;font-size:6.5pt;font-weight:700;margin-bottom:1.5mm}
+.caddr{color:#aaa;font-size:5.5pt;line-height:1.7}
+.ccontact{color:#fff;font-size:5.5pt;margin-top:1.5mm}
+.hl2{background:#c8f23a;height:1.5mm}
+/* reg strip */
+.reg{background:#1c1c23;display:flex;border-bottom:1.5px solid #c8f23a}
+.rc{flex:1;text-align:center;padding:2mm 3mm;border-left:1px solid rgba(200,242,58,.3)}
+.rc:first-child{border-left:none}
+.rk{display:block;color:#c8f23a;font-size:4.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.3pt;margin-bottom:.8mm}
+.rv{color:#fff;font-size:5.5pt}
+/* body */
+.lbody{flex:1;padding:7mm 14mm 5mm}
+.refrow{display:flex;justify-content:space-between;font-size:9pt;margin-bottom:8mm}
+.to-block{font-size:9pt;line-height:1.55;margin-bottom:5mm}
+.to-lbl{color:#5a5a5a;font-size:8pt}
+.subject{font-size:9.5pt;margin-bottom:6mm}
+.para{font-size:9.5pt;line-height:1.65;margin-bottom:5mm;text-align:justify}
+/* signatory */
+.sig{padding:0 14mm 5mm;page-break-inside:avoid}
+.closing{font-size:9pt;margin-bottom:8mm}
+.seal{width:55mm;display:block;margin-bottom:4mm}
+.sigline{width:78mm;border-top:1px solid #0b0b0f;margin-bottom:4mm}
+.sigco{font-size:9pt;font-weight:700;margin-bottom:4mm}
+.signame{font-size:8.5pt;margin-bottom:4mm}
+.sigtitle{font-size:7.5pt;color:#5a5a5a}
+/* footer */
+.fd{background:#0b0b0f;color:#fff;font-size:5.5pt;text-align:center;padding:3.5mm 14mm;letter-spacing:.3pt}
+.fl{background:#c8f23a;height:1.5mm}
+</style>
+</head>
+<body>
+<div class="page">
+<header>
+  <div class="hl"></div>
+  <div class="hd">
+    <div class="hleft">
+      <img class="logo" src="data:image/png;base64,${LTR_LOGO}" alt="">
+      <div><div class="cname">MICBAC INDIA</div><div class="ctag">ACTIVATED CARBON · KOLKATA</div></div>
+    </div>
+    <div class="hright">
+      <div class="cfull">MICBAC INDIA (OPC) PRIVATE LIMITED</div>
+      <div class="caddr">C/314 Loharuka Green Oasis, Kaikhali, Kolkata — 700052, West Bengal, India</div>
+      <div class="ccontact">E micbac.india@gmail.com · W micbacindia.com · T +91 82688 88827</div>
+    </div>
+  </div>
+  <div class="hl2"></div>
+</header>
+<div class="reg">
+  <div class="rc"><span class="rk">GSTIN</span><span class="rv">19AANCM7741C1Z8</span></div>
+  <div class="rc"><span class="rk">IEC</span><span class="rv">AANCM7741C</span></div>
+  <div class="rc"><span class="rk">MSME</span><span class="rv">UDYAM-WB-14-0002339</span></div>
+  <div class="rc"><span class="rk">LUT NO</span><span class="rv">AD190326030261F</span></div>
+</div>
+<div class="lbody">
+  <div class="refrow"><span>Ref: ${esc(ref)}</span><span>Date: ${esc(dateStr)}</span></div>
+  ${toHTML}
+  ${subHTML}
+  ${bodyHTML}
+</div>
+<div class="sig">
+  <div class="closing">Yours faithfully,</div>
+  <img class="seal" src="data:image/jpeg;base64,${SIG}" alt="">
+  <div class="sigline"></div>
+  <div class="sigco">For MICBAC INDIA (OPC) PVT. LTD.</div>
+  <div class="signame">Nilesh Gupta</div>
+  <div class="sigtitle">DIRECTOR</div>
+</div>
+<div class="fd">WWW.MICBACINDIA.COM | MICBAC.INDIA@GMAIL.COM</div>
+<div class="fl"></div>
+</div>
+</body>
+</html>`;
 }
+
 
 function makePDF() {
   if (docType === 'letter') {
     const ltrBtn = document.getElementById("ltrBtn");
-    if (ltrBtn) { ltrBtn.disabled=true; ltrBtn.textContent="⏳ Generating PDF..."; }
-    setTimeout(() => {
-      try {
-        const {jsPDF}=window.jspdf;
-        const doc=buildLetter(jsPDF);
-        const ref=(document.getElementById("ltrRef")?.value||"MICBAC-LETTER").replace(/\//g,"-");
-        const isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        if(isMobile){
-          const blob=doc.output("blob"),url=URL.createObjectURL(blob);
-          const a=document.createElement("a");a.href=url;a.target="_blank";a.rel="noopener";
-          document.body.appendChild(a);a.click();
-          setTimeout(()=>{URL.revokeObjectURL(url);document.body.removeChild(a);},3000);
-          toast("PDF opened — tap Share → Save to Files","ok");
-        } else { doc.save(ref+".pdf"); toast("Letter PDF downloaded!","ok"); }
-      } catch(e) { console.error(e); toast("Error: "+e.message,"err"); }
-      finally { if(ltrBtn){ltrBtn.disabled=false;ltrBtn.textContent="⬇ Download Letter (PDF)";} }
-    }, 100);
+    if (ltrBtn) { ltrBtn.disabled=true; ltrBtn.textContent="⏳ Opening letter..."; }
+    try {
+      const html = buildLetterHTML();
+      const blob = new Blob([html], {type:'text/html'});
+      const url  = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      toast("Letter opened — use Ctrl+P / ⌘P to save as PDF","ok");
+    } catch(e) { console.error(e); toast("Error: "+e.message,"err"); }
+    finally { if(ltrBtn){ltrBtn.disabled=false;ltrBtn.textContent="⬇ Open Letter (Print to PDF)";} }
     return;
   }
   const btn = document.getElementById("genBtn");

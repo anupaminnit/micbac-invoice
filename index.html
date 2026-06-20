@@ -248,6 +248,17 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
 .dt-btn{padding:9px 22px;border-radius:40px;border:none;font-family:"Inter Tight",sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;color:var(--muted);background:none}
 .dt-btn.active{background:var(--org);color:var(--blk);box-shadow:0 2px 12px rgba(155,193,26,.4)}
 .dt-btn:not(.active):hover{background:var(--lorg);color:var(--blk)}
+/* ── RICH TEXT EDITOR ── */
+.rte-wrap{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#fff}
+.rte-tb{display:flex;align-items:center;gap:3px;padding:5px 8px;background:#f8f8f5;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.rte-btn{background:none;border:1px solid transparent;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:13px;color:#374151;line-height:1.2;font-family:inherit}
+.rte-btn:hover{background:#e5e7eb;border-color:var(--border)}
+.rte-sep{width:1px;height:18px;background:var(--border);margin:0 3px;flex-shrink:0}
+.rte-sel{font-size:11px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;background:#fff;cursor:pointer;color:#374151}
+.rte-color{width:26px;height:24px;border:1px solid var(--border);border-radius:4px;padding:1px 2px;cursor:pointer;background:#fff}
+.rte-editor{min-height:210px;padding:12px 14px;font-size:14px;line-height:1.75;outline:none;color:#0b0b0f}
+.rte-editor:focus{outline:2px solid var(--org);outline-offset:-2px}
+
 </style>
 </head>
 <body>
@@ -580,7 +591,33 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
       <div class="sl" style="margin-top:16px">Letter Body</div>
       <div class="f">
         <label>Content <span>*</span></label>
-        <textarea id="ltrBody" rows="14" style="line-height:1.75" placeholder="Dear Sir/Madam,&#10;&#10;We are pleased to submit our quotation for the supply of Activated Carbon as per your requirements.&#10;&#10;[Write your letter content here. Blank lines between paragraphs are preserved in the PDF.]&#10;&#10;We look forward to your valued order and assure you of our best services at all times.&#10;&#10;Thanking you."></textarea>
+        <div class="rte-wrap">
+          <div class="rte-tb" id="rteTb">
+            <button type="button" class="rte-btn" onmousedown="event.preventDefault();document.execCommand('bold')" title="Bold"><b>B</b></button>
+            <button type="button" class="rte-btn" onmousedown="event.preventDefault();document.execCommand('italic')" title="Italic"><i>I</i></button>
+            <button type="button" class="rte-btn" onmousedown="event.preventDefault();document.execCommand('underline')" title="Underline"><u>U</u></button>
+            <div class="rte-sep"></div>
+            <select class="rte-sel" onchange="rteSetSize(this.value);this.value=''" title="Font size">
+              <option value="">Size</option>
+              <option value="8">8 pt</option>
+              <option value="9">9 pt</option>
+              <option value="10">10 pt</option>
+              <option value="11">11 pt</option>
+              <option value="12">12 pt</option>
+              <option value="14">14 pt</option>
+            </select>
+            <input type="color" class="rte-color" value="#0b0b0f" onchange="document.execCommand('foreColor',false,this.value)" title="Text colour">
+            <div class="rte-sep"></div>
+            <button type="button" class="rte-btn" onmousedown="event.preventDefault();document.execCommand('justifyLeft')" title="Align left" style="font-size:15px">&#8676;</button>
+            <button type="button" class="rte-btn" onmousedown="event.preventDefault();document.execCommand('justifyFull')" title="Justify" style="font-size:15px">&#8596;</button>
+          </div>
+          <div id="ltrBody" contenteditable="true" class="rte-editor"
+               data-ph="Dear Sir/Madam,
+
+Please write your letter content here.
+
+Blank lines between paragraphs are preserved in the PDF."></div>
+        </div>
       </div>
     </div>
   </div>
@@ -2049,7 +2086,15 @@ function buildLetterHTML() {
                           : new Date().toLocaleDateString("en-IN");
   const toText  = v("ltrTo");
   const subject = v("ltrSubject");
-  const body    = v("ltrBody");
+  // body: read from contenteditable innerHTML; strip placeholder span
+  const bodyEl  = document.getElementById("ltrBody");
+  let rawHTML = bodyEl ? bodyEl.innerHTML : '';
+  // remove placeholder span (gray text shown when empty)
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = rawHTML;
+  const phSpan = tempDiv.querySelector('span[style*="rgb(156, 163, 175)"]');
+  if (phSpan) phSpan.remove();
+  const bodyHTML = tempDiv.innerHTML.trim();
 
   let toHTML = '';
   if (toText.trim()) {
@@ -2060,9 +2105,6 @@ function buildLetterHTML() {
   if (subject.trim()) {
     subHTML = `<div class="subject"><strong>Sub:</strong> ${esc(subject)}</div>`;
   }
-  const bodyHTML = body.split(/\n\n+/).filter(p=>p.trim()).map(para=>{
-    return `<p class="para">${esc(para.trim()).replace(/\n/g,'<br>')}</p>`;
-  }).join('');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -2099,7 +2141,13 @@ body{font-family:system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;f
 .to-block{font-size:9pt;line-height:1.55;margin-bottom:5mm}
 .to-lbl{color:#5a5a5a;font-size:8pt}
 .subject{font-size:9.5pt;margin-bottom:6mm}
-.para{font-size:9.5pt;line-height:1.65;margin-bottom:5mm;text-align:justify}
+.para{font-size:10pt;line-height:1.65;margin-bottom:5mm;text-align:justify}
+.body-content{font-size:10pt;line-height:1.65;text-align:justify}
+.body-content p,.body-content div{margin-bottom:4mm}
+.body-content b,.body-content strong{font-weight:700}
+.body-content i,.body-content em{font-style:italic}
+.body-content u{text-decoration:underline}
+.body-content br+br{display:block;margin-top:4mm}
 /* signatory */
 .sig{padding:0 14mm 5mm;page-break-inside:avoid}
 .closing{font-size:9pt;margin-bottom:8mm}
@@ -2140,7 +2188,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;f
   <div class="refrow"><span>Ref: ${esc(ref)}</span><span>Date: ${esc(dateStr)}</span></div>
   ${toHTML}
   ${subHTML}
-  ${bodyHTML}
+  <div class="body-content">${bodyHTML}</div>
 </div>
 <div class="sig">
   <div class="closing">Yours faithfully,</div>
@@ -2157,6 +2205,37 @@ body{font-family:system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;f
 </html>`;
 }
 
+
+function rteSetSize(pt) {
+  if (!pt) return;
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount || sel.isCollapsed) return;
+  try {
+    const range = sel.getRangeAt(0);
+    const frag  = range.extractContents();
+    const span  = document.createElement('span');
+    span.style.fontSize = pt + 'pt';
+    span.appendChild(frag);
+    range.insertNode(span);
+    sel.removeAllRanges();
+    const r2 = document.createRange();
+    r2.selectNodeContents(span);
+    sel.addRange(r2);
+  } catch(e) { console.warn('rteSetSize:', e); }
+}
+(function initRteEditor() {
+  const el = document.getElementById('ltrBody');
+  if (!el) return;
+  const ph = (el.dataset.ph || '').replace(/\n/g, '\n');
+  function showPh() { if (!el.textContent.trim()) { el.innerHTML = '<span style="color:#9ca3af;pointer-events:none;white-space:pre-wrap">' + ph + '</span>'; } }
+  function clearPh() {
+    const first = el.firstElementChild;
+    if (first && first.style.color === 'rgb(156, 163, 175)') { el.innerHTML = ''; }
+  }
+  showPh();
+  el.addEventListener('focus', clearPh);
+  el.addEventListener('blur',  showPh);
+})();
 
 function makePDF() {
   if (docType === 'letter') {

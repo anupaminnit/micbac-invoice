@@ -593,11 +593,11 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
         <label>Content <span>*</span></label>
         <div class="rte-wrap">
           <div class="rte-tb" id="rteTb">
-            <button type="button" class="rte-btn" onmousedown="event.preventDefault();document.execCommand('bold')" title="Bold"><b>B</b></button>
-            <button type="button" class="rte-btn" onmousedown="event.preventDefault();document.execCommand('italic')" title="Italic"><i>I</i></button>
-            <button type="button" class="rte-btn" onmousedown="event.preventDefault();document.execCommand('underline')" title="Underline"><u>U</u></button>
+            <button type="button" class="rte-btn" onmousedown="event.preventDefault();rteCmd('bold')" title="Bold"><b>B</b></button>
+            <button type="button" class="rte-btn" onmousedown="event.preventDefault();rteCmd('italic')" title="Italic"><i>I</i></button>
+            <button type="button" class="rte-btn" onmousedown="event.preventDefault();rteCmd('underline')" title="Underline"><u>U</u></button>
             <div class="rte-sep"></div>
-            <select class="rte-sel" onchange="rteSetSize(this.value);this.value=''" title="Font size">
+            <select class="rte-sel" onmousedown="rteSaveRange()" onchange="rteSetSize(this.value);this.value=''" title="Font size">
               <option value="">Size</option>
               <option value="8">8 pt</option>
               <option value="9">9 pt</option>
@@ -606,10 +606,10 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
               <option value="12">12 pt</option>
               <option value="14">14 pt</option>
             </select>
-            <input type="color" class="rte-color" value="#0b0b0f" onchange="document.execCommand('foreColor',false,this.value)" title="Text colour">
+            <input type="color" class="rte-color" value="#0b0b0f" onmousedown="rteSaveRange()" onchange="rteColor(this.value)" title="Text colour">
             <div class="rte-sep"></div>
-            <button type="button" class="rte-btn" onmousedown="event.preventDefault();document.execCommand('justifyLeft')" title="Align left" style="font-size:15px">&#8676;</button>
-            <button type="button" class="rte-btn" onmousedown="event.preventDefault();document.execCommand('justifyFull')" title="Justify" style="font-size:15px">&#8596;</button>
+            <button type="button" class="rte-btn" onmousedown="event.preventDefault();rteCmd('justifyLeft')" title="Align left" style="font-size:15px">&#8676;</button>
+            <button type="button" class="rte-btn" onmousedown="event.preventDefault();rteCmd('justifyFull')" title="Justify" style="font-size:15px">&#8596;</button>
           </div>
           <div id="ltrBody" contenteditable="true" class="rte-editor"
                data-ph="Dear Sir/Madam,
@@ -2113,52 +2113,55 @@ function buildLetterHTML() {
 <title>Micbac India — Official Letter</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:10pt;color:#0b0b0f;background:#fff}
+body{font-family:system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:9.5pt;color:#0b0b0f;background:#fff}
 @page{size:A4;margin:0}
-@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-.page{width:210mm;min-height:297mm;margin:0 auto;display:flex;flex-direction:column}
+@media print{
+  body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .ftr-wrap{position:fixed;bottom:0;left:0;right:0}
+}
+.page{width:210mm;margin:0 auto;padding-bottom:16mm}
 /* header */
-.hl{background:#c8f23a;height:2.5mm}
-.hd{background:#0b0b0f;display:flex;justify-content:space-between;align-items:center;padding:4mm 14mm 5mm;gap:4mm}
-.hleft{display:flex;align-items:center;gap:6mm}
-.logo{width:18mm;height:18mm;object-fit:contain}
-.cname{color:#fff;font-size:13pt;font-weight:700;margin-bottom:1.5mm}
-.ctag{color:#c8f23a;font-size:6.5pt;letter-spacing:.4pt}
+.hl{background:#c8f23a;height:2mm}
+.hd{background:#0b0b0f;display:flex;justify-content:space-between;align-items:center;padding:3mm 14mm 3.5mm;gap:4mm}
+.hleft{display:flex;align-items:center;gap:5mm}
+.logo{width:16mm;height:16mm;object-fit:contain}
+.cname{color:#fff;font-size:12pt;font-weight:700;margin-bottom:1mm}
+.ctag{color:#c8f23a;font-size:6pt;letter-spacing:.4pt}
 .hright{text-align:right}
-.cfull{color:#c8f23a;font-size:6.5pt;font-weight:700;margin-bottom:1.5mm}
-.caddr{color:#aaa;font-size:5.5pt;line-height:1.7}
-.ccontact{color:#fff;font-size:5.5pt;margin-top:1.5mm}
-.hl2{background:#c8f23a;height:1.5mm}
+.cfull{color:#c8f23a;font-size:6pt;font-weight:700;margin-bottom:1mm}
+.caddr{color:#aaa;font-size:5pt;line-height:1.7}
+.ccontact{color:#fff;font-size:5pt;margin-top:1mm}
+.hl2{background:#c8f23a;height:1.2mm}
 /* reg strip */
-.reg{background:#1c1c23;display:flex;border-bottom:1.5px solid #c8f23a}
-.rc{flex:1;text-align:center;padding:2mm 3mm;border-left:1px solid rgba(200,242,58,.3)}
+.reg{background:#1c1c23;display:flex;border-bottom:1.2px solid #c8f23a}
+.rc{flex:1;text-align:center;padding:1.5mm 2mm;border-left:1px solid rgba(200,242,58,.3)}
 .rc:first-child{border-left:none}
-.rk{display:block;color:#c8f23a;font-size:4.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.3pt;margin-bottom:.8mm}
-.rv{color:#fff;font-size:5.5pt}
+.rk{display:block;color:#c8f23a;font-size:4pt;font-weight:700;text-transform:uppercase;letter-spacing:.3pt;margin-bottom:.5mm}
+.rv{color:#fff;font-size:5pt}
 /* body */
-.lbody{flex:1;padding:7mm 14mm 5mm}
-.refrow{display:flex;justify-content:space-between;font-size:9pt;margin-bottom:8mm}
-.to-block{font-size:9pt;line-height:1.55;margin-bottom:5mm}
-.to-lbl{color:#5a5a5a;font-size:8pt}
-.subject{font-size:9.5pt;margin-bottom:6mm}
-.para{font-size:10pt;line-height:1.65;margin-bottom:5mm;text-align:justify}
-.body-content{font-size:10pt;line-height:1.65;text-align:justify}
-.body-content p,.body-content div{margin-bottom:4mm}
+.lbody{padding:5mm 14mm 3mm}
+.refrow{display:flex;justify-content:space-between;font-size:8.5pt;margin-bottom:5mm}
+.to-block{font-size:8.5pt;line-height:1.5;margin-bottom:4mm}
+.to-lbl{color:#5a5a5a;font-size:7.5pt}
+.subject{font-size:9pt;margin-bottom:4mm}
+.body-content{font-size:9.5pt;line-height:1.6;text-align:justify}
+.body-content p,.body-content div{margin-bottom:3.5mm}
+.body-content p:last-child,.body-content div:last-child{margin-bottom:0}
 .body-content b,.body-content strong{font-weight:700}
 .body-content i,.body-content em{font-style:italic}
 .body-content u{text-decoration:underline}
-.body-content br+br{display:block;margin-top:4mm}
 /* signatory */
-.sig{padding:0 14mm 5mm;page-break-inside:avoid}
-.closing{font-size:9pt;margin-bottom:8mm}
-.seal{width:55mm;display:block;margin-bottom:4mm}
-.sigline{width:78mm;border-top:1px solid #0b0b0f;margin-bottom:4mm}
-.sigco{font-size:9pt;font-weight:700;margin-bottom:4mm}
-.signame{font-size:8.5pt;margin-bottom:4mm}
-.sigtitle{font-size:7.5pt;color:#5a5a5a}
-/* footer */
-.fd{background:#0b0b0f;color:#fff;font-size:5.5pt;text-align:center;padding:3.5mm 14mm;letter-spacing:.3pt}
-.fl{background:#c8f23a;height:1.5mm}
+.sig{padding:4mm 14mm 3mm;page-break-inside:avoid}
+.closing{font-size:8.5pt;margin-bottom:5mm}
+.seal{width:50mm;display:block;margin-bottom:3mm}
+.sigline{width:72mm;border-top:1px solid #0b0b0f;margin-bottom:3mm}
+.sigco{font-size:8.5pt;font-weight:700;margin-bottom:3mm}
+.signame{font-size:8pt;margin-bottom:3mm}
+.sigtitle{font-size:7pt;color:#5a5a5a}
+/* footer — fixed to bottom in print so appears on every page */
+.ftr-wrap{width:210mm;margin:0 auto}
+.fd{background:#0b0b0f;color:#fff;font-size:5pt;text-align:center;padding:2.5mm 14mm;letter-spacing:.3pt}
+.fl{background:#c8f23a;height:1.2mm}
 </style>
 </head>
 <body>
@@ -2198,16 +2201,37 @@ body{font-family:system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;f
   <div class="signame">Nilesh Gupta</div>
   <div class="sigtitle">DIRECTOR</div>
 </div>
-<div class="fd">WWW.MICBACINDIA.COM | MICBAC.INDIA@GMAIL.COM</div>
-<div class="fl"></div>
+<div class="ftr-wrap">
+  <div class="fd">WWW.MICBACINDIA.COM | MICBAC.INDIA@GMAIL.COM</div>
+  <div class="fl"></div>
+</div>
 </div>
 </body>
 </html>`;
 }
 
 
+// ── Rich text editor helpers ────────────────────────────────────────────────
+let _rteRange = null;   // persisted selection for toolbar actions
+
+function rteSaveRange() {
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount) _rteRange = sel.getRangeAt(0).cloneRange();
+}
+function rteRestoreRange() {
+  if (!_rteRange) return false;
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(_rteRange);
+  return true;
+}
+function rteCmd(cmd, value) {
+  // B / I / U — called from onmousedown so focus is still in editor
+  document.execCommand(cmd, false, value || null);
+}
 function rteSetSize(pt) {
   if (!pt) return;
+  if (!rteRestoreRange()) return;
   const sel = window.getSelection();
   if (!sel || !sel.rangeCount || sel.isCollapsed) return;
   try {
@@ -2221,20 +2245,32 @@ function rteSetSize(pt) {
     const r2 = document.createRange();
     r2.selectNodeContents(span);
     sel.addRange(r2);
+    _rteRange = r2.cloneRange();   // update saved range
   } catch(e) { console.warn('rteSetSize:', e); }
+}
+function rteColor(c) {
+  rteRestoreRange();
+  document.execCommand('foreColor', false, c);
+  rteSaveRange();
 }
 (function initRteEditor() {
   const el = document.getElementById('ltrBody');
   if (!el) return;
-  const ph = (el.dataset.ph || '').replace(/\n/g, '\n');
-  function showPh() { if (!el.textContent.trim()) { el.innerHTML = '<span style="color:#9ca3af;pointer-events:none;white-space:pre-wrap">' + ph + '</span>'; } }
+  const ph = (el.dataset.ph || '').replace(/\\n/g, '\n');
+  function showPh() {
+    if (!el.textContent.trim()) {
+      el.innerHTML = '<span style="color:#9ca3af;pointer-events:none;white-space:pre-wrap">' + ph + '</span>';
+    }
+  }
   function clearPh() {
     const first = el.firstElementChild;
-    if (first && first.style.color === 'rgb(156, 163, 175)') { el.innerHTML = ''; }
+    if (first && first.style.color === 'rgb(156, 163, 175)') el.innerHTML = '';
   }
   showPh();
   el.addEventListener('focus', clearPh);
   el.addEventListener('blur',  showPh);
+  el.addEventListener('mouseup', rteSaveRange);
+  el.addEventListener('keyup',   rteSaveRange);
 })();
 
 function makePDF() {

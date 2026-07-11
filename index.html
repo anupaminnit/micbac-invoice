@@ -407,6 +407,15 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
             </datalist>
           </div>
         </div>
+        <div id="gstRow" style="display:none;margin-top:12px;max-width:260px">
+          <div class="f"><label>GST Type</label>
+            <select id="gstType" onchange="updateTotals()">
+              <option value="">— None / Export (No GST) —</option>
+              <option value="igst18">IGST @ 18%</option>
+              <option value="cgst_sgst5">CGST + SGST @ 5% (2.5% each)</option>
+            </select>
+          </div>
+        </div>
       </div>
     </div>
     <div class="br"><span></span><button class="btn bp" onclick="go(1)">Next: Parties &amp; Ports →</button></div>
@@ -775,6 +784,15 @@ function toggleConsignee() {
 function computeGrandTotal() {
   return goodsRows.reduce((s,r) => s + (parseFloat(r.qty)||0)*(parseFloat(r.rate)||0), 0);
 }
+function computeGST() {
+  const sub = computeGrandTotal();
+  const gstType = document.getElementById("gstType")?.value || "";
+  const curr = getCurrCode();
+  if (curr !== "INR" || !gstType) return {sub, igst:0, cgst:0, sgst:0, net:sub, type:""};
+  if (gstType === "igst18")      { const igst=sub*0.18; return {sub, igst, cgst:0, sgst:0, net:sub+igst, type:"igst18"}; }
+  if (gstType === "cgst_sgst5") { const h=sub*0.025;  return {sub, igst:0, cgst:h, sgst:h, net:sub+2*h, type:"cgst_sgst5"}; }
+  return {sub, igst:0, cgst:0, sgst:0, net:sub, type:""};
+}
 
 function rebuildGoods() {
   const tbody = document.getElementById("goodsBody");
@@ -799,7 +817,7 @@ function rebuildGoods() {
 }
 
 function updateTotals() {
-  document.getElementById("grandTotalDisplay").textContent = getCurrSymbol()+fmt(computeGrandTotal());
+  document.getElementById("grandTotalDisplay").textContent = getCurrSymbol()+fmt(computeGST().net);
 }
 
 function addGoodsRow() {
@@ -808,14 +826,14 @@ function addGoodsRow() {
 }
 
 function buildSummary() {
-  const total = computeGrandTotal();
+  const gst = computeGST();
   document.getElementById("summaryGrid").innerHTML = [
     {t:"Invoice",           h:`<p><strong>${g("invNo")}</strong><br>Date: ${fd(gr("invDate"))}<br>Contract: ${gr("ctNo")}</p>`},
     {t:"Consignee / Notify",h:`<p>${gr("notifyName")}<br>Tax: ${gr("notifyTax")}</p>`},
     {t:"Ports",             h:`<p>Loading: ${getPort("pol")||gr("pol")}<br>Destination: ${getPort("pod")||gr("pod")}</p>`},
-    {t:"Goods",             h:`<p>${goodsRows.length} line item(s)<br>Total: ${getCurrSymbol()}${fmt(total)}</p>`},
+    {t:"Goods",             h:`<p>${goodsRows.length} line item(s)<br>Total: ${getCurrSymbol()}${fmt(gst.net)}</p>`},
   ].map(b=>`<div class="sb"><h4>${b.t}</h4>${b.h}</div>`).join("");
-  document.getElementById("summGrand").textContent = getCurrSymbol()+fmt(total);
+  document.getElementById("summGrand").textContent = getCurrSymbol()+fmt(gst.net);
   document.getElementById("summInv").textContent = g("invNo");
 }
 
@@ -1158,8 +1176,10 @@ function buildQuotation(jsPDF) {
     const qtOFRate = gr("qtOFRate");
     const qtOFTransit = gr("qtOFTransit");
     const qtPONo  = (gr("qtPONo")||"").toUpperCase();
-    const grandTotal = computeGrandTotal();
-    const inrTotal = qtExRate > 0 ? grandTotal * qtExRate : 0;
+    const _qtGst     = computeGST();
+    const grandTotal = _qtGst.sub;
+    const qtNetPayable = _qtGst.net;
+    const inrTotal   = qtExRate > 0 ? qtNetPayable * qtExRate : 0;
 
     const PW=210, PH=297, ML=10, CW=190;
     const GREEN=[11,11,15], GOLD=[200,242,58], IVORY=[244,244,239], DGREEN=[11,11,15];
@@ -1333,7 +1353,7 @@ function buildQuotation(jsPDF) {
         fc(GOLD); doc.rect(ML+CW-88,Y,88,7,"F");
         fn(6.5,"bold"); tc(DGREEN);
         doc.text("TOTAL IN "+curCode,ML+CW-86,Y+5);
-        fn(7,"bold"); doc.text(curSym+fmt(grandTotal),ML+CW-1.5,Y+5,{align:"right"});
+        fn(7,"bold"); doc.text(curSym+fmt(qtNetPayable),ML+CW-1.5,Y+5,{align:"right"});
         Y+=7;
         bx(ML,Y,CW,7,IVORY,GREEN,0.1);
         fn(6,"normal"); tc(GREEN); doc.text("TOLERANCE : "+qtTolerance,ML+2,Y+4.8); Y+=7;
@@ -1391,6 +1411,9 @@ function updateCurrency() {
     const el = document.getElementById(id);
     if (el) el.textContent = code;
   });
+  const gstRow = document.getElementById("gstRow");
+  if (gstRow) gstRow.style.display = code === "INR" ? "" : "none";
+  if (code !== "INR") { const gt = document.getElementById("gstType"); if (gt) gt.value = ""; }
   rebuildGoods();
 }
 
@@ -1431,7 +1454,7 @@ function getDraftData() {
   return {
     invNo:v("invNo"),invDate:v("invDate"),ctNo:v("ctNo"),ctDate:v("ctDate"),
     ctType:v("ctType"),inco:v("inco"),bankAccount:v("bankAccount"),
-    payTerms:v("payTerms"),currency:v("currency"),
+    payTerms:v("payTerms"),currency:v("currency"),gstType:v("gstType"),
     consigneeType:v("consigneeType"),consigneeName:v("consigneeName"),
     notifyName:v("notifyName"),notifyAddr:v("notifyAddr"),
     notifyTax:v("notifyTax"),coo:v("coo"),
@@ -1453,7 +1476,7 @@ function restoreDraft(d) {
   const set=(id,v)=>{const e=document.getElementById(id);if(e&&v!=null)e.value=v;};
   set("invNo",d.invNo);set("invDate",d.invDate);set("ctNo",d.ctNo);set("ctDate",d.ctDate);
   set("ctType",d.ctType);set("inco",d.inco);set("bankAccount",d.bankAccount);
-  set("payTerms",d.payTerms);set("currency",d.currency);
+  set("payTerms",d.payTerms);set("currency",d.currency);set("gstType",d.gstType||"");
   set("consigneeType",d.consigneeType);toggleConsignee();
   set("consigneeName",d.consigneeName);set("notifyName",d.notifyName);
   set("notifyAddr",d.notifyAddr);set("notifyTax",d.notifyTax);set("coo",d.coo);
@@ -1582,7 +1605,9 @@ function buildQuotationHTML() {
   const qtBuyerCountry = (g("qtBuyerCountry") || "").toUpperCase();
   const curr       = gr("currency") || "USD";
   const curSym     = getCurrSymbol();
-  const total      = computeGrandTotal();
+  const gst        = computeGST();
+  const total      = gst.sub;
+  const netTotal   = gst.net;
 
   const items = goodsRows.map((r,i) => ({
     sr: i+1, desc: (r.desc||"").toUpperCase(), hs: (r.hscode||"").toUpperCase(),
@@ -1654,7 +1679,15 @@ function buildQuotationHTML() {
     +'</tr></thead><tbody>'+iRows+'</tbody></table>'
     +'<div class="strip">'
     +'<span><span class="k">QTY TOTAL</span><span class="v">'+totalQty+' METRIC TONNES</span></span>'
-    +'<span><span class="k">TOTAL IN '+curr+'</span><span class="v">'+curSym+' '+mn(total)+'</span></span>'
+    +(gst.type==='igst18'
+      ? '<span><span class="k">SUB TOTAL</span><span class="v">'+curSym+' '+mn(total)+'</span></span>'
+        +'<span><span class="k">IGST @ 18%</span><span class="v">'+curSym+' '+mn(gst.igst)+'</span></span>'
+        +'<span><span class="k">TOTAL IN '+curr+'</span><span class="v">'+curSym+' '+mn(netTotal)+'</span></span>'
+      : gst.type==='cgst_sgst5'
+      ? '<span><span class="k">SUB TOTAL</span><span class="v">'+curSym+' '+mn(total)+'</span></span>'
+        +'<span><span class="k">CGST+SGST @ 5%</span><span class="v">'+curSym+' '+mn(gst.cgst+gst.sgst)+'</span></span>'
+        +'<span><span class="k">TOTAL IN '+curr+'</span><span class="v">'+curSym+' '+mn(netTotal)+'</span></span>'
+      : '<span><span class="k">TOTAL IN '+curr+'</span><span class="v">'+curSym+' '+mn(total)+'</span></span>')
     +'</div>';
 
   let extraR='';
@@ -1722,7 +1755,9 @@ function buildHTMLDoc() {
   const marking  = gr("marking").toUpperCase();
   const curr     = gr("currency") || "USD";
   const curSym   = getCurrSymbol();
-  const total    = computeGrandTotal();
+  const gst      = computeGST();
+  const total    = gst.sub;
+  const netTotal = gst.net;
   const bankKey  = document.getElementById("bankAccount")?.value || "currency_cloud";
   const bankRows = (BANKS[bankKey] || BANKS.currency_cloud).rows;
   const items    = goodsRows.map((r,i)=>({
@@ -1742,8 +1777,9 @@ function buildHTMLDoc() {
     function u(x){let s='';if(x>=100){s+=o[Math.floor(x/100)]+' HUNDRED ';x%=100;}if(x>=20){s+=t[Math.floor(x/10)]+(x%10?'-'+o[x%10]:'')+' ';}else if(x>0){s+=o[x]+' ';}return s.trim();}
     function sp(x){if(!x)return 'ZERO';let s='';const th=Math.floor(x/1000);if(th>0)s+=u(th)+' THOUSAND ';s+=u(x%1000);return s.trim();}
     const i=Math.floor(n),c=Math.round((n-i)*100);
-    const unit=curr==='EUR'?'EUROS':curr==='GBP'?'POUNDS STERLING':curr==='SGD'?'SINGAPORE DOLLARS':curr==='AED'?'UAE DIRHAMS':'US DOLLARS';
-    return unit+' '+sp(i)+(c?' AND '+sp(c)+' CENTS':' ONLY');
+    const unit=curr==='EUR'?'EUROS':curr==='GBP'?'POUNDS STERLING':curr==='SGD'?'SINGAPORE DOLLARS':curr==='AED'?'UAE DIRHAMS':curr==='INR'?'INDIAN RUPEES':'US DOLLARS';
+    const frac=curr==='INR'?'PAISE':'CENTS';
+    return unit+' '+sp(i)+(c?' AND '+sp(c)+' '+frac:' ONLY');
   }
 
   // Dot-pore mark SVG (self-contained, no external deps)
@@ -1816,13 +1852,24 @@ function buildHTMLDoc() {
     +'<span><span class="k">TOTAL BAGS</span><span class="v">'+totalBags+'</span></span></div>';
 
   const bPay=bankRows.map(([k,v])=>'<span class="pk">'+k+'</span><span class="pv">'+v+'</span>').join('');
+  let gstRows='';
+  if(gst.type==='igst18'){
+    gstRows='<div class="sum-row"><span class="sk">Sub Total ('+curr+')</span><span class="sv">'+curSym+' '+mn(total)+'</span></div>'
+      +'<div class="sum-row"><span class="sk">IGST @ 18%</span><span class="sv">'+curSym+' '+mn(gst.igst)+'</span></div>';
+  } else if(gst.type==='cgst_sgst5'){
+    gstRows='<div class="sum-row"><span class="sk">Sub Total ('+curr+')</span><span class="sv">'+curSym+' '+mn(total)+'</span></div>'
+      +'<div class="sum-row"><span class="sk">CGST @ 2.5%</span><span class="sv">'+curSym+' '+mn(gst.cgst)+'</span></div>'
+      +'<div class="sum-row"><span class="sk">SGST @ 2.5%</span><span class="sv">'+curSym+' '+mn(gst.sgst)+'</span></div>';
+  } else {
+    gstRows='<div class="sum-row"><span class="sk">Tax on Rev. Charges</span><span class="sv">NIL (EXPORT)</span></div>'
+      +'<div class="sum-row"><span class="sk">Total Amount ('+curr+')</span><span class="sv">'+curSym+' '+mn(total)+'</span></div>';
+  }
   const PAY_SUM='<div class="paysum"><div class="box"><div class="box-h">Payment Details</div><div class="pay-body">'+bPay+'</div></div>'
     +'<div class="box"><div class="box-h">Amount Summary</div><div class="sum-body">'
-    +'<div class="sum-row"><span class="sk">Tax on Rev. Charges</span><span class="sv">NIL (EXPORT)</span></div>'
-    +'<div class="sum-row"><span class="sk">Total Amount ('+curr+')</span><span class="sv">'+curSym+' '+mn(total)+'</span></div>'
+    +gstRows
     +'<div class="sum-row"><span class="sk">Advance Received</span><span class="sv">NIL</span></div>'
     +'<div class="sum-row"><span class="sk">Round-off</span><span class="sv">NIL</span></div>'
-    +'<div class="sum-row net"><span class="sk">Net Payable</span><span class="sv">'+curSym+' '+mn(total)+'</span></div>'
+    +'<div class="sum-row net"><span class="sk">Net Payable</span><span class="sv">'+curSym+' '+mn(netTotal)+'</span></div>'
     +'</div></div></div>';
 
   const WEIGHTS='<div class="wgrid">'
@@ -1833,7 +1880,7 @@ function buildHTMLDoc() {
 
   function sign(showW){
     return '<div class="sign"><div class="words">'
-      +(showW?'<span style="font-family:var(--mono);font-size:7px;letter-spacing:.14em;color:var(--mute);text-transform:uppercase;">Amount in words&nbsp;&nbsp;</span><span class="amt">'+amtWords(total)+'</span>':'')
+      +(showW?'<span style="font-family:var(--mono);font-size:7px;letter-spacing:.14em;color:var(--mute);text-transform:uppercase;">Amount in words&nbsp;&nbsp;</span><span class="amt">'+amtWords(netTotal)+'</span>':'')
       +'</div><div class="sigbox"><div class="forco">FOR MICBAC INDIA (OPC) PVT. LTD.</div>'
       +'<img src="data:image/jpeg;base64,'+SIG+'" style="max-width:160px;height:auto;display:block;margin:4px 0 4px auto;" />'
       +'<div class="sigline"><div class="role">AUTHORISED SIGNATORY</div></div></div></div>';
@@ -1917,7 +1964,7 @@ function closePreview(){
 function emailDraft(){
   const invNo=document.getElementById("invNo")?.value||"INVOICE";
   const notify=document.getElementById("notifyName")?.value||"";
-  const total=getCurrSymbol()+fmt(computeGrandTotal());
+  const total=getCurrSymbol()+fmt(computeGST().net);
   const sub=encodeURIComponent("Commercial Invoice — "+invNo);
   const body=encodeURIComponent(
     "Dear "+notify+",\n\nPlease find attached the commercial invoice "+invNo+
@@ -1959,7 +2006,9 @@ function buildDoc(jsPDF, isProforma=false) {
       const pkgDesc = gr("pkgDesc").toUpperCase();
       const pkgTotal= gr("pkgTotal").toUpperCase();
       const marking = gr("marking").toUpperCase();
-      const grandTotal = computeGrandTotal();
+      const _gst      = computeGST();
+      const grandTotal = _gst.sub;
+      const netPayable = _gst.net;
 
       const PW=210, PH=297, ML=10, MR=10, CW=PW-ML-MR;
       const BK=[0,0,0], WHITE=[255,255,255], LGRAY=[244,244,239], LIME=[200,242,58];
@@ -2148,7 +2197,14 @@ function buildDoc(jsPDF, isProforma=false) {
           const AX=ML+BANK_W;
           fc(HDRBG); doc.rect(AX,botTop,AMT_W,7,"F");
           fn(6,"bold"); tc(WHITE); doc.text("AMOUNT SUMMARY",AX+AMT_W/2,botTop+4.8,{align:"center"});
-          const amtData=[["TAX ON REV. CHARGES","NIL (EXPORT)",false],["TOTAL AMOUNT ("+curCode+")",curSym+fmt(grandTotal),true],["ADVANCE RECEIVED","NIL",false],["ROUND-OFF","NIL",false]];
+          let amtData;
+          if(_gst.type==='igst18'){
+            amtData=[["SUB TOTAL ("+curCode+")",curSym+fmt(grandTotal),false],["IGST @ 18%",curSym+fmt(_gst.igst),false],["ADVANCE RECEIVED","NIL",false],["ROUND-OFF","NIL",false]];
+          } else if(_gst.type==='cgst_sgst5'){
+            amtData=[["SUB TOTAL ("+curCode+")",curSym+fmt(grandTotal),false],["CGST @ 2.5%",curSym+fmt(_gst.cgst),false],["SGST @ 2.5%",curSym+fmt(_gst.sgst),false],["ADVANCE RECEIVED","NIL",false],["ROUND-OFF","NIL",false]];
+          } else {
+            amtData=[["TAX ON REV. CHARGES","NIL (EXPORT)",false],["TOTAL AMOUNT ("+curCode+")",curSym+fmt(grandTotal),true],["ADVANCE RECEIVED","NIL",false],["ROUND-OFF","NIL",false]];
+          }
           let amtY=botTop+7;
           amtData.forEach(([k,v,bold],i)=>{
             fc(i%2===0?LGRAY:WHITE);doc.rect(AX,amtY,AMT_W,6,"F");
@@ -2159,7 +2215,7 @@ function buildDoc(jsPDF, isProforma=false) {
           });
           fc(HDRBG); doc.rect(AX,amtY,AMT_W,9,"F");
           fn(6.5,"bold"); tc(WHITE); doc.text("NET PAYABLE",AX+2,amtY+6);
-          fn(7,"bold"); tc(LIME); doc.text(curSym+fmt(grandTotal),AX+AMT_W-2,amtY+6,{align:"right"});
+          fn(7,"bold"); tc(LIME); doc.text(curSym+fmt(netPayable),AX+AMT_W-2,amtY+6,{align:"right"});
           amtY+=9;
           const SX2=AX+AMT_W;
           fc(HDRBG); doc.rect(SX2,botTop,SIG_W_BOT,7,"F");
@@ -2451,7 +2507,7 @@ function saveInvoiceRecord() {
     invNo: (document.getElementById('invNo')?.value || '').trim(),
     invDate: gr('invDate') ? fd(gr('invDate')) : '',
     buyer: (gr('notifyName') || gr('qtAttn') || '').trim(),
-    amount: computeGrandTotal(),
+    amount: computeGST().net,
     currency: getCurrCode(),
     pol: getPort('pol') || gr('pol') || '',
     pod: getPort('pod') || gr('pod') || '',

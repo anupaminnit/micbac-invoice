@@ -1067,7 +1067,6 @@ document.addEventListener('DOMContentLoaded', () => {
   autoInvoiceNumber();
   renderAddressBook();
   updateCurrency();
-  initRecordsBadge();
 
   // Delegation: handles mouse clicks; e.preventDefault() prevents
   // the search-input blur from firing before the selection completes
@@ -2437,17 +2436,14 @@ function rteColor(c) {
 })();
 
 // ═══════════════════════════════════════════════════════════════════════
-// INVOICE RECORDS — localStorage persistence
+// INVOICE RECORDS — Google Sheets backend via Apps Script
 // ═══════════════════════════════════════════════════════════════════════
-const REC_KEY = 'micbac_invoice_records';
+const APPS_SCRIPT_URL = ''; // Paste your deployed Web App URL here
 
-function getRecords() {
-  try { return JSON.parse(localStorage.getItem(REC_KEY) || '[]'); } catch(e) { return []; }
-}
-function saveRecords(recs) { localStorage.setItem(REC_KEY, JSON.stringify(recs)); }
+let _cachedRecords = [];
 
 function saveInvoiceRecord() {
-  if (docType === 'letter') return;
+  if (docType === 'letter' || !APPS_SCRIPT_URL) return;
   const rec = {
     id: Date.now(),
     createdAt: new Date().toISOString(),
@@ -2461,12 +2457,11 @@ function saveInvoiceRecord() {
     pod: getPort('pod') || gr('pod') || '',
     items: goodsRows.length,
   };
-  if (!rec.invNo && !rec.buyer) return; // skip empty form
-  const recs = getRecords();
-  recs.unshift(rec);
-  saveRecords(recs);
-  const btn = document.getElementById('recNavBtn');
-  if (btn) btn.textContent = `\u{1F4CB} Records (${recs.length})`;
+  if (!rec.invNo && !rec.buyer) return;
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST', mode: 'no-cors',
+    body: JSON.stringify({action: 'insert', record: rec}),
+  }).catch(e => console.warn('Record save failed:', e));
 }
 
 function renderRecordsTable(recs) {
@@ -2504,27 +2499,44 @@ function renderRecordsTable(recs) {
   </table>`;
 }
 
-function showRecords() {
-  const recs = getRecords();
-  renderRecordsTable(recs);
+async function showRecords() {
   document.getElementById('recModal').classList.add('open');
+  document.getElementById('recBody').innerHTML = '<div class="rec-empty">⏳ Loading records...</div>';
+  document.getElementById('recCount').textContent = '';
+  if (!APPS_SCRIPT_URL) {
+    document.getElementById('recBody').innerHTML = '<div class="rec-empty">Apps Script not configured — add your Web App URL to the APPS_SCRIPT_URL constant in the code.</div>';
+    return;
+  }
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + '?action=list');
+    const data = await res.json();
+    _cachedRecords = data.ok ? data.records : [];
+    renderRecordsTable(_cachedRecords);
+  } catch(e) {
+    document.getElementById('recBody').innerHTML = '<div class="rec-empty">❌ Failed to load records. Check your Apps Script URL.</div>';
+  }
 }
 function closeRecords() { document.getElementById('recModal').classList.remove('open'); }
 
 function deleteRecord(id) {
-  const recs = getRecords().filter(r => r.id !== id);
-  saveRecords(recs);
-  renderRecordsTable(recs);
-  const btn = document.getElementById('recNavBtn');
-  if (btn) btn.textContent = recs.length ? `\u{1F4CB} Records (${recs.length})` : '\u{1F4CB} Records';
+  if (!APPS_SCRIPT_URL) return;
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST', mode: 'no-cors',
+    body: JSON.stringify({action: 'delete', id}),
+  }).catch(e => console.warn('Delete failed:', e));
+  _cachedRecords = _cachedRecords.filter(r => r.id !== id);
+  renderRecordsTable(_cachedRecords);
 }
 
 function clearAllRecords() {
   if (!confirm('Delete all invoice records? This cannot be undone.')) return;
-  saveRecords([]);
+  if (!APPS_SCRIPT_URL) return;
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST', mode: 'no-cors',
+    body: JSON.stringify({action: 'clear'}),
+  }).catch(e => console.warn('Clear failed:', e));
+  _cachedRecords = [];
   renderRecordsTable([]);
-  const btn = document.getElementById('recNavBtn');
-  if (btn) btn.textContent = '\u{1F4CB} Records';
 }
 
 function recordsToRows(recs) {
@@ -2538,7 +2550,8 @@ function recordsToRows(recs) {
 }
 
 function exportRecordsCSV() {
-  const recs = getRecords();
+  if (!_cachedRecords.length) { toast('Open Records first to load data','err'); return; }
+  const recs = _cachedRecords;
   if (!recs.length) { toast('No records to export','err'); return; }
   const rows = recordsToRows(recs);
   const csv = rows.map(r => r.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
@@ -2552,7 +2565,8 @@ function exportRecordsCSV() {
 }
 
 function exportRecordsExcel() {
-  const recs = getRecords();
+  if (!_cachedRecords.length) { toast('Open Records first to load data','err'); return; }
+  const recs = _cachedRecords;
   if (!recs.length) { toast('No records to export','err'); return; }
   if (typeof XLSX === 'undefined') { toast('Excel library not loaded — try CSV instead','err'); return; }
   const rows = recordsToRows(recs);
@@ -2562,12 +2576,6 @@ function exportRecordsExcel() {
   XLSX.utils.book_append_sheet(wb, ws, 'Invoice Records');
   XLSX.writeFile(wb, 'MICBAC_Invoice_Records_'+new Date().toISOString().slice(0,10)+'.xlsx');
   toast('Excel exported!','ok');
-}
-
-function initRecordsBadge() {
-  const recs = getRecords();
-  const btn = document.getElementById('recNavBtn');
-  if (btn && recs.length) btn.textContent = `\u{1F4CB} Records (${recs.length})`;
 }
 
 function makePDF() {

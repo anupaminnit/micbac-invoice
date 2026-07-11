@@ -1,7 +1,13 @@
 // MICBAC Invoice Records — Google Apps Script Web App
 // Deploy as: Execute as → Me | Who has access → Anyone
 // After deploy, copy the Web App URL into index.html → APPS_SCRIPT_URL
+//
+// SETUP: This is a standalone script, so you must point it at a spreadsheet.
+// 1. Go to sheets.google.com → create a new sheet (name it anything)
+// 2. Copy the ID from the URL:  .../spreadsheets/d/<ID>/edit
+// 3. Paste it below as SPREADSHEET_ID, then save and redeploy.
 
+const SPREADSHEET_ID = ''; // ← paste your Google Sheet ID here
 const SHEET_NAME = 'Invoice Records';
 const COLUMNS = ['id','createdAt','docType','invNo','invDate','buyer','amount','currency','pol','pod','items'];
 const HEADERS  = ['ID','Created At','Doc Type','Invoice No.','Invoice Date','Buyer','Amount','Currency','POL','POD','Items'];
@@ -38,11 +44,11 @@ function json(obj) {
 }
 
 function getSheet() {
-  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  return SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
 }
 
 function ensureSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   if (!ss.getSheetByName(SHEET_NAME)) {
     const sheet = ss.insertSheet(SHEET_NAME);
     sheet.appendRow(HEADERS);

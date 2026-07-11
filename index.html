@@ -1557,6 +1557,146 @@ const _MIC_CSS = ":root{--carbon:#0B0B0F;--ink:#16171C;--lime:#C8F23A;--lime-dk:
 // ═══════════════════════════════════════════════════════════════════════
 // HTML INVOICE GENERATOR — produces the exact Precision × Carbon design
 // ═══════════════════════════════════════════════════════════════════════
+function buildQuotationHTML() {
+  const inv        = g("invNo");
+  const date       = fd(gr("invDate"));
+  const ctType     = g("ctType");
+  const inco       = g("inco");
+  const payT       = gr("payTerms").toUpperCase();
+  const coo        = g("coo") || "INDIA";
+  const polV       = getPort("pol").toUpperCase();
+  const podV       = getPort("pod").toUpperCase();
+  const notify     = gr("notifyName").toUpperCase();
+  const nAddr      = gr("notifyAddr").toUpperCase();
+  const nTax       = gr("notifyTax").toUpperCase();
+  const nCountry   = gr("notifyCountry").toUpperCase();
+  const qtAttn     = gr("qtAttn").toUpperCase();
+  const qtGrossWt  = gr("qtGrossWt");
+  const qtNetWt    = gr("qtNetWt");
+  const qtWtUnit   = (gr("qtWtUnit") || "KGS").toUpperCase();
+  const qtTolerance= gr("qtTolerance") || "3%";
+  const qtPackaging= (gr("qtPackaging") || "").toUpperCase();
+  const qtOFCarrier= (gr("qtOFCarrier") || "").toUpperCase();
+  const qtOFRate   = gr("qtOFRate");
+  const qtOFTransit= gr("qtOFTransit");
+  const qtPONo     = (gr("qtPONo") || "").toUpperCase();
+  const qtBuyerCountry = (g("qtBuyerCountry") || "").toUpperCase();
+  const curr       = gr("currency") || "USD";
+  const curSym     = getCurrSymbol();
+  const total      = computeGrandTotal();
+
+  const items = goodsRows.map((r,i) => ({
+    sr: i+1, desc: (r.desc||"").toUpperCase(), hs: (r.hscode||"").toUpperCase(),
+    unit: (r.unit||"METRIC TONNES").toUpperCase(),
+    qty: parseFloat(r.qty)||0, rate: parseFloat(r.rate)||0,
+    amount: (parseFloat(r.qty)||0)*(parseFloat(r.rate)||0),
+  }));
+  const totalQty = items.reduce((a,it)=>a+it.qty, 0);
+
+  function mn(n){return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+  const dots=[];const R=44,step=6.8;
+  for(let row=-7;row<=7;row++){const y=row*step*0.866;const off=row%2===0?0:step/2;
+    for(let col=-7;col<=7;col++){const x=col*step+off;const d=Math.sqrt(x*x+y*y);
+      if(d>R-3.5||d<5.2)continue;const r=d<12?2.0:d<22?1.7:d<32?1.3:1.0;
+      dots.push('<circle cx="'+(50+x).toFixed(2)+'" cy="'+(50+y).toFixed(2)+'" r="'+r+'" fill="#0B0B0F"/>');
+    }
+  }
+  const MARK='<svg width="54" height="54" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="47" stroke="#0B0B0F" stroke-width="1.2"/>'+dots.join('')+'<circle cx="50" cy="50" r="4.2" fill="#C8F23A"/><circle cx="50" cy="50" r="7.2" stroke="#C8F23A" stroke-width="0.6" opacity="0.45"/></svg>';
+
+  const MAST='<div class="mast"><div class="mast-l"><div class="mast-mark">'+MARK+'</div><div><div class="mast-name">MICBAC INDIA</div><div class="mast-rule"></div><div class="mast-tag">ACTIVATED CARBON &middot; KOLKATA</div></div></div>'
+    +'<div class="mast-r"><div class="em" style="font-size:9px;margin-bottom:2px;">MICBAC INDIA (OPC) PRIVATE LIMITED</div>'
+    +'C/314 LOHARUKA GREEN OASIS, KAIKHALI, KOLKATA - 700052, WEST BENGAL<br>'
+    +'<span class="lbl">EMAIL</span> MICBAC.INDIA@GMAIL.COM &nbsp;|&nbsp; WWW.MICBACINDIA.COM<br>'
+    +'<span class="lbl">GSTIN</span> <span class="em">19AANCM7741C1Z8</span> &nbsp;<span class="lbl">STATE</span> [19] WEST BENGAL<br>'
+    +'<span class="lbl">PAN</span> AANCM7741C &nbsp;<span class="lbl">IEC</span> AANCM7741C &nbsp;<span class="lbl">LUT NO</span> AD190326030261F'
+    +'</div></div>';
+
+  const TITLEBAR='<div class="titlebar"><div><div class="tick"></div><h1>QUOTATION</h1></div>'
+    +'<div class="meta-no">'
+    +'<div><span class="lbl">REF NO.&nbsp;</span><span class="v">'+inv+'</span></div>'
+    +'<div><span class="lbl">DATE&nbsp;</span><span class="v">'+date+'</span></div>'
+    +'</div></div>';
+
+  const PARTIES='<div class="pgrid">'
+    +'<div class="cell" style="border-right:1px solid var(--line);">'
+    +'<div class="k">BILL TO</div>'
+    +'<div class="vmain">'+notify+'</div>'
+    +(nAddr?'<div class="vsub">'+nAddr+'</div>':'')
+    +(qtBuyerCountry?'<div class="vsub">'+qtBuyerCountry+'</div>':'')
+    +(nTax?'<div class="vsub" style="margin-top:4px;"><span style="color:var(--mute);font-family:var(--mono);font-size:8px;">TAX CODE:</span> '+nTax+'</div>':'')
+    +(qtAttn?'<div class="vsub" style="margin-top:4px;"><span style="color:var(--mute);font-family:var(--mono);font-size:8px;">KIND ATTN:</span> '+qtAttn+'</div>':'')
+    +'</div>'
+    +'<div class="cell"><div class="k">EXPORTER</div>'
+    +'<div class="vmain">MICBAC INDIA (OPC) PVT. LTD.</div>'
+    +'<div class="vsub">C/314 LOHARUKA GREEN OASIS, KAIKHALI,<br>KOLKATA - 700052, INDIA</div>'
+    +'<div class="vsub" style="margin-top:4px;"><span style="color:var(--mute);font-family:var(--mono);font-size:8px;">IEC</span> AANCM7741C &nbsp;|&nbsp; <span style="color:var(--mute);font-family:var(--mono);font-size:8px;">GST</span> 19AANCM7741C1Z8</div>'
+    +'<div class="vsub"><span style="color:var(--mute);font-family:var(--mono);font-size:8px;">LUT NO</span> AD190326030261F</div>'
+    +'</div></div>';
+
+  const meta2=[['PURCHASE ORDER NO.',qtPONo],['CONTAINER TYPE',ctType],['COUNTRY OF ORIGIN',coo],['BUYER\'S COUNTRY',qtBuyerCountry],['PORT OF LOADING',polV],['PORT OF DESTINATION',podV],['INCO TERMS',inco],['PAYMENT TERMS',payT]];
+  let shipR='';
+  for(let i=0;i<meta2.length;i+=2){const a=meta2[i],b=meta2[i+1];
+    shipR+='<div class="ship-row"><div><div class="k">'+a[0]+'</div><div class="v">'+a[1]+'</div></div>'
+      +'<div><div class="k">'+(b?b[0]:'')+'</div><div class="v">'+(b?b[1]:'')+'</div></div></div>';
+  }
+  const SHIP='<div class="ship">'+shipR+'</div>';
+
+  const iRows=items.map(it=>'<tr><td class="num">'+it.sr+'</td>'
+    +'<td><div class="desc-main">'+it.desc+'</div>'+(it.hs?'<div class="desc-grade">HS: '+it.hs+'</div>':'')+'</td>'
+    +'<td class="num r">'+it.hs+'</td><td>'+it.unit+'</td>'
+    +'<td class="r">'+it.qty+'</td>'
+    +'<td class="r">'+curSym+' '+mn(it.rate)+'/MT</td>'
+    +'<td class="r" style="font-weight:700;">'+curSym+' '+mn(it.amount)+'</td></tr>').join('');
+  const QT_TABLE='<table class="items"><thead><tr>'
+    +'<th style="width:26px;">SR</th><th>DESCRIPTION</th><th class="r" style="width:70px;">HS CODE</th>'
+    +'<th style="width:78px;">UNIT</th><th class="r" style="width:42px;">QTY</th>'
+    +'<th class="r" style="width:84px;">RATE/MT</th><th class="r" style="width:90px;">AMOUNT</th>'
+    +'</tr></thead><tbody>'+iRows+'</tbody></table>'
+    +'<div class="strip">'
+    +'<span><span class="k">QTY TOTAL</span><span class="v">'+totalQty+' METRIC TONNES</span></span>'
+    +'<span><span class="k">TOTAL IN '+curr+'</span><span class="v">'+curSym+' '+mn(total)+'</span></span>'
+    +'</div>';
+
+  let extraR='';
+  if(qtTolerance) extraR+='<div class="ship-row"><div style="grid-column:1/-1"><div class="k">TOLERANCE</div><div class="v">'+qtTolerance+'</div></div></div>';
+  if(qtPackaging) extraR+='<div class="ship-row"><div style="grid-column:1/-1"><div class="k">PACKAGING</div><div class="v">'+qtPackaging+'</div></div></div>';
+  const EXTRA=extraR?'<div class="ship" style="margin-top:8px">'+extraR+'</div>':'';
+
+  let wfR='';
+  if(qtGrossWt||qtOFCarrier) wfR+='<div class="ship-row">'
+    +'<div><div class="k">GROSS WEIGHT</div><div class="v" style="font-weight:600;">'+(qtGrossWt?qtGrossWt+' '+qtWtUnit:'—')+'</div></div>'
+    +'<div><div class="k">OCEAN FREIGHT</div><div class="v" style="text-align:right;">'+(qtOFCarrier||'—')+'</div></div></div>';
+  if(qtNetWt||qtOFRate) wfR+='<div class="ship-row">'
+    +'<div><div class="k">NET WEIGHT</div><div class="v">'+(qtNetWt?qtNetWt+' '+qtWtUnit:'—')+'</div></div>'
+    +'<div><div class="k">RATE</div><div class="v" style="text-align:right;">'+(qtOFRate||'—')+'</div></div></div>';
+  if(qtOFTransit) wfR+='<div class="ship-row"><div style="grid-column:1/-1"><div class="k">TRANSIT TIME</div><div class="v">'+qtOFTransit+'</div></div></div>';
+  const WF=wfR?'<div class="ship" style="margin-top:8px">'+wfR+'</div>':'';
+
+  const SIGN='<div class="sign"><div class="words"></div>'
+    +'<div class="sigbox"><div class="forco">FOR MICBAC INDIA (OPC) PVT. LTD.</div>'
+    +'<img src="data:image/jpeg;base64,'+SIG+'" style="max-width:160px;height:auto;display:block;margin:4px 0 4px auto;" />'
+    +'<div class="sigline"><div class="role">AUTHORISED SIGNATORY</div></div></div></div>';
+
+  const TERMS='<div class="terms"><h4>Terms &amp; Conditions</h4><ul>'
+    +'<li>PRICES ARE SUBJECT TO CHANGE WITHOUT PRIOR NOTICE.</li>'
+    +'<li>WE ARE NOT RESPONSIBLE FOR ANY TRANSIT DAMAGE, LOSS OR LEAKAGE.</li>'
+    +'<li>MICBAC INDIA (OPC) PVT. LTD. IS REGISTERED UNDER THE MSMED ACT, 2006.</li>'
+    +'<li>ALL DISPUTES SUBJECT TO KOLKATA JURISDICTION. E &amp; O.E</li></ul></div>';
+  const FOOT='<div class="foot"><span>WWW.MICBACINDIA.COM &nbsp;|&nbsp; MICBAC.INDIA@GMAIL.COM</span>'
+    +'<span class="doc-orig">** COMPUTER-GENERATED QUOTATION ** | THIS IS NOT AN INVOICE</span></div>';
+
+  const S_QT='<div class="sheet">'+MAST+TITLEBAR+PARTIES+SHIP+QT_TABLE+EXTRA+WF+SIGN+TERMS+FOOT+'</div>';
+
+  return '<!doctype html><html lang="en"><head><meta charset="utf-8"/><title>MICBAC India — Quotation '+inv+'</title>'
+    +'<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>'
+    +'<style>'+_MIC_CSS+'</style></head><body>'
+    +'<div class="toolbar"><div class="tb-brand"><span class="nm">MICBAC INDIA</span><span class="sub">Precision × Carbon</span></div>'
+    +'<div class="tb-actions"><button class="tb-btn primary" onclick="window.print()">Print / Save PDF</button></div></div>'
+    +'<div class="stage"><div id="s0">'+S_QT+'</div></div>'
+    +'</body></html>';
+}
+
 function buildHTMLDoc() {
   const inv      = g("invNo");
   const date     = fd(gr("invDate"));
@@ -1730,14 +1870,9 @@ function showPreview(){
   frame.src="about:blank";
   setTimeout(()=>{
     try{
-      if(docType==='quotation'){
-        const {jsPDF}=window.jspdf;
-        const doc=buildQuotation(jsPDF);
-        if(_previewBlobUrl){URL.revokeObjectURL(_previewBlobUrl);_previewBlobUrl=null;}
-        _previewBlobUrl=URL.createObjectURL(doc.output("blob"));
-        frame.src=_previewBlobUrl;
+      if(false){/* quotation now uses HTML path below */
       } else {
-        const html=buildHTMLDoc();
+        const html=docType==='quotation'?buildQuotationHTML():buildHTMLDoc();
         if(_previewBlobUrl){URL.revokeObjectURL(_previewBlobUrl);_previewBlobUrl=null;}
         // Parse HTML and inject directly into a scoped div — avoids all iframe sandbox issues
         frame.style.display='none';
@@ -2456,31 +2591,19 @@ function makePDF() {
       saveInvoiceRecord();
       const invNo=document.getElementById("invNo")?.value||"";
       if(invNo) localStorage.setItem("micbac_last_inv_no",invNo);
-      if(docType==='quotation'){
-        const {jsPDF}=window.jspdf;
-        const doc=buildQuotation(jsPDF);
-        const fname=(invNo||"MICBAC-QUOTATION").replace(/\//g,"-")+".pdf";
-        const isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        if(isMobile){
-          const blob=doc.output("blob"),url=URL.createObjectURL(blob);
-          const a=document.createElement("a");a.href=url;a.target="_blank";a.rel="noopener";
-          document.body.appendChild(a);a.click();
-          setTimeout(()=>{URL.revokeObjectURL(url);document.body.removeChild(a);},3000);
-          toast("PDF opened — tap Share → Save to Files","ok");
-        } else { doc.save(fname); toast("Quotation PDF downloaded!","ok"); }
-      } else {
-        const html=buildHTMLDoc();
+      const html=docType==='quotation'?buildQuotationHTML():buildHTMLDoc();
         const blob=new Blob([html],{type:'text/html;charset=utf-8'});
         const url=URL.createObjectURL(blob);
         const win=window.open(url,'_blank');
         if(win) win.addEventListener('load',()=>setTimeout(()=>win.print(),900));
+        const label=docType==='quotation'?"Quotation":"Invoice + Packing List";
         toast("Print window opening — choose Save as PDF","ok");
         setTimeout(()=>URL.revokeObjectURL(url),30000);
-      }
     } catch(e) {
       console.error(e); toast("Error: "+e.message,"err");
     } finally {
-      btn.disabled=false; btn.textContent="⬇ Download Commercial Invoice + Packing List (PDF)";
+      btn.disabled=false;
+      btn.textContent=docType==='quotation'?"⬇ Download Quotation (PDF)":"⬇ Download Commercial Invoice + Packing List (PDF)";
     }
   }, 100);
 }

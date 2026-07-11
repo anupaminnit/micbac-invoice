@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 :root{
@@ -93,6 +94,31 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
 .ab-btn.del{background:#EF4444;color:#fff}.ab-btn.del:hover{background:#DC2626}
 .ab-name-input{flex:1;border:1.5px solid var(--border);border-radius:6px;padding:7px 10px;font-family:"Inter Tight",sans-serif;font-size:.82rem;min-width:140px}
 .ab-name-input:focus{outline:none;border-color:var(--org)}
+
+/* ── RECORDS MODAL ── */
+.rec-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center;padding:20px}
+.rec-modal.open{display:flex}
+.rec-box{background:#fff;border-radius:12px;width:100%;max-width:960px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.rec-header{background:var(--blk);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0}
+.rec-header h3{font-family:"Inter Tight",sans-serif;font-size:1rem;font-weight:600;flex:1}
+.rec-header-actions{display:flex;gap:8px;align-items:center}
+.rec-body{flex:1;overflow:auto;padding:0}
+.rec-empty{padding:48px 24px;text-align:center;color:var(--muted);font-size:.9rem}
+.rec-table{width:100%;border-collapse:collapse;font-size:.8rem}
+.rec-table thead th{position:sticky;top:0;background:var(--light);color:var(--muted);font-size:.67rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:10px 12px;text-align:left;border-bottom:2px solid var(--border)}
+.rec-table tbody tr{border-bottom:1px solid var(--border);transition:.12s}
+.rec-table tbody tr:hover{background:#FAFFF0}
+.rec-table td{padding:10px 12px;vertical-align:middle}
+.rec-table .td-no{font-family:"JetBrains Mono",monospace;font-weight:600;color:var(--blk);white-space:nowrap}
+.rec-table .td-amt{font-family:"JetBrains Mono",monospace;font-weight:700;color:var(--dorg);white-space:nowrap;text-align:right}
+.rec-table .td-type{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.63rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.rec-table .td-type.invoice{background:#E8F5E9;color:#1B5E20}
+.rec-table .td-type.proforma{background:#E3F2FD;color:#0D47A1}
+.rec-table .td-type.quotation{background:#FFF8E1;color:#E65100}
+.rec-table .td-del{background:none;border:none;color:#ccc;cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;transition:.15s}
+.rec-table .td-del:hover{color:#c62828;background:#FFEBEE}
+.rec-footer{padding:12px 20px;display:flex;gap:10px;border-top:1px solid var(--border);background:#FAFAFA;justify-content:space-between;align-items:center;flex-shrink:0}
+.rec-count{font-size:.78rem;color:var(--muted)}
 
 /* ── PREVIEW MODAL ── */
 .preview-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center;padding:20px}
@@ -275,6 +301,7 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
     <button class="nav-btn" onclick="saveDraft()">&#128190; Save</button>
     <button class="nav-btn" onclick="loadDraft()">&#128193; Load</button>
     <button class="nav-btn" onclick="cloneInvoice()">&#8662; Clone</button>
+    <button class="nav-btn" onclick="showRecords()" id="recNavBtn">&#128203; Records</button>
     <span class="nb">Export Documents</span>
   </div>
 </nav>
@@ -1040,6 +1067,7 @@ document.addEventListener('DOMContentLoaded', () => {
   autoInvoiceNumber();
   renderAddressBook();
   updateCurrency();
+  initRecordsBadge();
 
   // Delegation: handles mouse clicks; e.preventDefault() prevents
   // the search-input blur from firing before the selection completes
@@ -2273,6 +2301,140 @@ function rteColor(c) {
   el.addEventListener('keyup',   rteSaveRange);
 })();
 
+// ═══════════════════════════════════════════════════════════════════════
+// INVOICE RECORDS — localStorage persistence
+// ═══════════════════════════════════════════════════════════════════════
+const REC_KEY = 'micbac_invoice_records';
+
+function getRecords() {
+  try { return JSON.parse(localStorage.getItem(REC_KEY) || '[]'); } catch(e) { return []; }
+}
+function saveRecords(recs) { localStorage.setItem(REC_KEY, JSON.stringify(recs)); }
+
+function saveInvoiceRecord() {
+  if (docType === 'letter') return;
+  const rec = {
+    id: Date.now(),
+    createdAt: new Date().toISOString(),
+    docType,
+    invNo: (document.getElementById('invNo')?.value || '').trim(),
+    invDate: gr('invDate') ? fd(gr('invDate')) : '',
+    buyer: (gr('notifyName') || gr('qtAttn') || '').trim(),
+    amount: computeGrandTotal(),
+    currency: getCurrCode(),
+    pol: getPort('pol') || gr('pol') || '',
+    pod: getPort('pod') || gr('pod') || '',
+    items: goodsRows.length,
+  };
+  if (!rec.invNo && !rec.buyer) return; // skip empty form
+  const recs = getRecords();
+  recs.unshift(rec);
+  saveRecords(recs);
+  const btn = document.getElementById('recNavBtn');
+  if (btn) btn.textContent = `\u{1F4CB} Records (${recs.length})`;
+}
+
+function renderRecordsTable(recs) {
+  const body = document.getElementById('recBody');
+  const count = document.getElementById('recCount');
+  if (!recs.length) {
+    body.innerHTML = '<div class="rec-empty">No records yet. Generate an invoice or quotation to start tracking.</div>';
+    count.textContent = '';
+    return;
+  }
+  count.textContent = recs.length + ' record' + (recs.length !== 1 ? 's' : '');
+  const rows = recs.map((r,i) => {
+    const typeLabel = r.docType === 'quotation' ? 'quotation' : (r.docType === 'proforma' ? 'proforma' : 'invoice');
+    const amt = r.amount ? r.currency + ' ' + Number(r.amount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '-';
+    const at = r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+    return `<tr>
+      <td class="td-no">${r.invNo||'-'}</td>
+      <td>${r.invDate||'-'}</td>
+      <td><span class="td-type ${typeLabel}">${typeLabel}</span></td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.buyer}">${r.buyer||'-'}</td>
+      <td class="td-amt">${amt}</td>
+      <td style="color:var(--muted);font-size:.75rem">${r.pol||'-'}</td>
+      <td style="color:var(--muted);font-size:.75rem">${r.pod||'-'}</td>
+      <td style="color:var(--muted);font-size:.75rem;white-space:nowrap">${at}</td>
+      <td><button class="td-del" onclick="deleteRecord(${r.id})" title="Delete">&#10005;</button></td>
+    </tr>`;
+  }).join('');
+  body.innerHTML = `<table class="rec-table">
+    <thead><tr>
+      <th>Invoice No.</th><th>Date</th><th>Type</th><th>Buyer</th>
+      <th style="text-align:right">Amount</th><th>POL</th><th>POD</th>
+      <th>Generated At</th><th></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function showRecords() {
+  const recs = getRecords();
+  renderRecordsTable(recs);
+  document.getElementById('recModal').classList.add('open');
+}
+function closeRecords() { document.getElementById('recModal').classList.remove('open'); }
+
+function deleteRecord(id) {
+  const recs = getRecords().filter(r => r.id !== id);
+  saveRecords(recs);
+  renderRecordsTable(recs);
+  const btn = document.getElementById('recNavBtn');
+  if (btn) btn.textContent = recs.length ? `\u{1F4CB} Records (${recs.length})` : '\u{1F4CB} Records';
+}
+
+function clearAllRecords() {
+  if (!confirm('Delete all invoice records? This cannot be undone.')) return;
+  saveRecords([]);
+  renderRecordsTable([]);
+  const btn = document.getElementById('recNavBtn');
+  if (btn) btn.textContent = '\u{1F4CB} Records';
+}
+
+function recordsToRows(recs) {
+  const headers = ['Invoice No.','Invoice Date','Type','Buyer','Amount','Currency','POL','POD','Items','Generated At'];
+  const data = recs.map(r => [
+    r.invNo||'', r.invDate||'', r.docType||'', r.buyer||'',
+    r.amount||0, r.currency||'', r.pol||'', r.pod||'',
+    r.items||0, r.createdAt ? new Date(r.createdAt).toLocaleString('en-IN') : ''
+  ]);
+  return [headers, ...data];
+}
+
+function exportRecordsCSV() {
+  const recs = getRecords();
+  if (!recs.length) { toast('No records to export','err'); return; }
+  const rows = recordsToRows(recs);
+  const csv = rows.map(r => r.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'MICBAC_Invoice_Records_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+  toast('CSV exported!','ok');
+}
+
+function exportRecordsExcel() {
+  const recs = getRecords();
+  if (!recs.length) { toast('No records to export','err'); return; }
+  if (typeof XLSX === 'undefined') { toast('Excel library not loaded — try CSV instead','err'); return; }
+  const rows = recordsToRows(recs);
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [14,12,10,28,12,8,22,22,6,20].map(w=>({wch:w}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Invoice Records');
+  XLSX.writeFile(wb, 'MICBAC_Invoice_Records_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast('Excel exported!','ok');
+}
+
+function initRecordsBadge() {
+  const recs = getRecords();
+  const btn = document.getElementById('recNavBtn');
+  if (btn && recs.length) btn.textContent = `\u{1F4CB} Records (${recs.length})`;
+}
+
 function makePDF() {
   if (docType === 'letter') {
     const ltrBtn = document.getElementById("ltrBtn");
@@ -2291,6 +2453,7 @@ function makePDF() {
   btn.disabled = true; btn.textContent = "⏳ Generating PDF...";
   setTimeout(() => {
     try {
+      saveInvoiceRecord();
       const invNo=document.getElementById("invNo")?.value||"";
       if(invNo) localStorage.setItem("micbac_last_inv_no",invNo);
       if(docType==='quotation'){
@@ -2322,6 +2485,28 @@ function makePDF() {
   }, 100);
 }
 </script>
+
+<!-- Records Modal -->
+<div class="rec-modal" id="recModal" onclick="if(event.target===this)closeRecords()">
+  <div class="rec-box">
+    <div class="rec-header">
+      <h3>&#128203; Invoice Records</h3>
+      <div class="rec-header-actions">
+        <button class="preview-close" onclick="closeRecords()">&#10005;</button>
+      </div>
+    </div>
+    <div class="rec-body" id="recBody"></div>
+    <div class="rec-footer">
+      <span class="rec-count" id="recCount"></span>
+      <div style="display:flex;gap:8px">
+        <button class="btn bs" onclick="exportRecordsCSV()" style="font-size:.78rem;padding:7px 14px">&#8595; Export CSV</button>
+        <button class="btn bs" onclick="exportRecordsExcel()" style="font-size:.78rem;padding:7px 14px;background:#1B5E20;color:#fff;border-color:#1B5E20">&#8595; Export Excel</button>
+        <button class="btn bs" onclick="clearAllRecords()" style="font-size:.78rem;padding:7px 14px;color:#c62828;border-color:#c62828">Clear All</button>
+        <button class="btn bs" onclick="closeRecords()" style="font-size:.78rem;padding:7px 14px">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Preview Modal -->
 <div class="preview-modal" id="previewModal" onclick="if(event.target===this)closePreview()">

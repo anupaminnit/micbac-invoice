@@ -9,9 +9,10 @@
 
 const SPREADSHEET_ID = ''; // ← paste your Google Sheet ID here
 const SHEET_NAME = 'Invoice Records';
-// ← must match APPS_SCRIPT_TOKEN in index.html exactly, or every request is rejected.
-// Generate your own with `openssl rand -hex 20` — don't reuse the value from any example.
-const TOKEN = '';
+// Must match APPS_SCRIPT_TOKEN in index.html exactly. Not a real secret (this
+// repo is public) — it only stops the bare Web App URL, if it leaks on its
+// own without the surrounding code, from granting read/wipe access by itself.
+const TOKEN = 'de1345c4ac01c9d50cdd504003e5799fdcbf361b';
 const COLUMNS = ['id','createdAt','docType','invNo','invDate','buyer','amount','currency','pol','pod','items','draftJson'];
 const HEADERS  = ['ID','Created At','Doc Type','Invoice No.','Invoice Date','Buyer','Amount','Currency','POL','POD','Items','Draft JSON'];
 

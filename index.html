@@ -2264,10 +2264,10 @@ function rteColor(c) {
 // INVOICE RECORDS — Google Sheets backend via Apps Script
 // ═══════════════════════════════════════════════════════════════════════
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby-qX0Zv9v39KLi-q8O2kOSGA2-YTwc3-L2N-di3o7E5IIhkRDWGn7qBIRWSjFyHo22/exec'; // Paste your deployed Web App URL here
-// Must match TOKEN in apps-script/Code.gs exactly. This is NOT a real secret —
-// anyone who views this page's source can read it — it only stops the bare
-// Web App URL (if it ever leaks on its own) from granting read/wipe access.
-const APPS_SCRIPT_TOKEN = 'PASTE_YOUR_TOKEN_HERE'; // ← generate with `openssl rand -hex 20`, paste same value in Code.gs TOKEN
+// Must match TOKEN in apps-script/Code.gs exactly. Not a real secret (this
+// repo is public) — it only stops the bare Web App URL, if it leaks on its
+// own without the surrounding code, from granting read/wipe access by itself.
+const APPS_SCRIPT_TOKEN = 'de1345c4ac01c9d50cdd504003e5799fdcbf361b';
 
 let _cachedRecords = [];
 

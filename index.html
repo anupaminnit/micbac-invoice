@@ -9,7 +9,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 :root{
   --org:#C8F23A;--lorg:#EEF6CE;--morg:#C2CE9B;--dorg:#5E7A0A;
   --blk:#0B0B0F;--text:#1A1A1A;--muted:#6A6A74;--light:#F4F4EF;
@@ -658,7 +657,7 @@ Blank lines between paragraphs are preserved in the PDF."></div>
     </div>
   </div>
   <div class="br" style="margin-top:10px">
-    <button class="btn bg" id="ltrBtn" onclick="makePDF()">&#8659; Download Letter (PDF)#8659; Open Letter (Print to PDF)</button>
+    <button class="btn bg" id="ltrBtn" onclick="makePDF()">&#8659; Download Letter PDF</button>
   </div>
 </div>
 
@@ -802,9 +801,9 @@ function rebuildGoods() {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td style="text-align:center;color:var(--muted);font-size:.75rem">${i+1}</td>
-      <td><textarea style="min-height:48px;resize:vertical" oninput="goodsRows[${i}].desc=this.value">${r.desc}</textarea></td>
-      <td><input class="mono" value="${r.hscode}" oninput="goodsRows[${i}].hscode=this.value" style="width:80px"/></td>
-      <td><input value="${r.unit}" oninput="goodsRows[${i}].unit=this.value.toUpperCase();this.value=this.value.toUpperCase()"/></td>
+      <td><textarea style="min-height:48px;resize:vertical" oninput="goodsRows[${i}].desc=this.value">${esc(r.desc)}</textarea></td>
+      <td><input class="mono" value="${esc(r.hscode)}" oninput="goodsRows[${i}].hscode=this.value" style="width:80px"/></td>
+      <td><input value="${esc(r.unit)}" oninput="goodsRows[${i}].unit=this.value.toUpperCase();this.value=this.value.toUpperCase()"/></td>
       <td><input class="mono" type="number" value="${r.qty}" oninput="goodsRows[${i}].qty=this.value;updateTotals()" style="width:64px"/></td>
       <td><input class="mono" type="number" value="${r.rate}" oninput="goodsRows[${i}].rate=this.value;updateTotals()" style="width:84px"/></td>
       <td class="mono" style="text-align:right;font-weight:600">${getCurrSymbol()}${fmt(amt)}</td>
@@ -1144,254 +1143,6 @@ function switchDocType(type) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// QUOTATION PDF GENERATION
-// ═══════════════════════════════════════════════════════════════════════
-function buildQuotation(jsPDF) {
-  try {
-    const doc = new jsPDF({orientation:"portrait", unit:"mm", format:"a4"});
-
-    const invNo   = g("invNo");
-    const curSym  = getCurrSymbol();
-    const curCode = getCurrCode();
-    const invDate = fd(gr("invDate"));
-    const ctType  = g("ctType");
-    const inco    = g("inco");
-    const payT    = gr("payTerms").toUpperCase();
-    const notify  = gr("notifyName").toUpperCase();
-    const notifyTax = gr("notifyTax").toUpperCase();
-    const coo     = g("coo") || "INDIA";
-    const pol     = getPort("pol");
-    const pod     = getPort("pod");
-    const grossWt = gr("qtGrossWt");
-    const netWt   = gr("qtNetWt");
-    const qtWtUnit = (gr("qtWtUnit") || "MT").toUpperCase();
-    const qtBuyerCountry = g("qtBuyerCountry");
-    const qtAttn  = gr("qtAttn");
-    const qtAgent = gr("qtAgent");
-    const qtTolerance = gr("qtTolerance") || "3%";
-    const qtPackaging = (gr("qtPackaging")||"").toUpperCase();
-    const qtExRate = parseFloat(gr("qtExRate")) || 0;
-    const qtOFCarrier = (gr("qtOFCarrier")||"").toUpperCase();
-    const qtOFRate = gr("qtOFRate");
-    const qtOFTransit = gr("qtOFTransit");
-    const qtPONo  = (gr("qtPONo")||"").toUpperCase();
-    const _qtGst     = computeGST();
-    const grandTotal = _qtGst.sub;
-    const qtNetPayable = _qtGst.net;
-    const inrTotal   = qtExRate > 0 ? qtNetPayable * qtExRate : 0;
-
-    const PW=210, PH=297, ML=10, CW=190;
-    const GREEN=[11,11,15], GOLD=[200,242,58], IVORY=[244,244,239], DGREEN=[11,11,15];
-    const WHITE=[255,255,255];
-    const LW=88, RW=CW-LW, RX=ML+LW;
-    const SIG_W=50, SIG_H=Math.round(SIG_W*(387/1342)*10)/10;
-    const META_ROW_H=6;
-    const colW=[12,64,20,24,14,24,CW-158];
-    const hdrs=["SL NO","DESCRIPTION","HS CODE","UNIT","QTY","RATE/MT","AMOUNT"];
-
-    const bx=(x,y,w,h,fill,stroke,lw=0.3)=>{
-      if(fill){doc.setFillColor(...fill);} if(stroke){doc.setDrawColor(...stroke);doc.setLineWidth(lw);}
-      doc.rect(x,y,w,h,fill&&stroke?"FD":fill?"F":stroke?"D":"S");
-    };
-    const hl=(x1,y1,x2,y2,col,lw)=>{doc.setDrawColor(...col);doc.setLineWidth(lw);doc.line(x1,y1,x2,y2);};
-    const fn=(sz,st)=>{doc.setFontSize(sz);doc.setFont("helvetica",st);};
-    const tc=c=>doc.setTextColor(...c);
-    const sc=c=>doc.setDrawColor(...c);
-    const fc=c=>doc.setFillColor(...c);
-
-    const metas=[
-      ["INVOICE NUMBER",invNo,true],["INVOICE DATE",invDate,false],
-      ["PURCHASE ORDER #",qtPONo,true],["CONTAINER TYPE",ctType,false],
-      ["FOREIGN EXPORTER COUNTRY","INDIA",true],["BILL TO COUNTRY OF ORIGIN","INDIA",false],
-      ["COUNTRY OF ORIGIN OF GOODS",coo,true],["PORT OF LOADING",pol,false],
-      ["PORT OF DISCHARGE",pod,true],["INCO TERMS",inco,false],
-      ["TAX ID NO",notifyTax||"-",true],["PAYMENT TERMS",payT,false],
-    ];
-
-    const agentLines = qtAgent ? doc.splitTextToSize(qtAgent.toUpperCase(), LW-4) : [];
-    const billLines = [];
-    if(notify) billLines.push(notify);
-    if(qtBuyerCountry) billLines.push(qtBuyerCountry.toUpperCase());
-    if(qtAttn) billLines.push("KIND ATTN: "+qtAttn.toUpperCase());
-    billLines.push(...agentLines);
-    const billH = Math.max(20, billLines.length*4.5+5);
-
-    const DECL_LINES=[
-      "We declare that the above information is true and correct to the best of our knowledge.",
-      "- We are not responsible for the change in price of ocean freight during the time of shipment",
-      "  due to external factors like war, floods, earthquake or any other factors not within our control."
-    ];
-    const sigStartY = PH - 10 - (SIG_H + 3 + 5 + 4 + 8 + DECL_LINES.length*4);
-
-    function drawHeader() {
-      // Green header band
-      fc(GREEN); doc.rect(0,0,PW,30,"F");
-      doc.addImage("data:image/png;base64,"+LOGO,"PNG",ML+1,4,26,26);
-      fn(14,"bold"); tc(GOLD); doc.text("MICBAC INDIA (OPC) PVT. LTD.",ML+31,12);
-      fn(6.5,"normal"); tc(IVORY); doc.text("C/314 LOHARUKA GREEN OASIS, KAIKHALI, KOLKATA - 700052",ML+31,18.5);
-      fn(5.5,"normal"); tc(IVORY);
-      doc.text("GST: 19AANCM7741C1Z8  |  IEC: AANCM7741C  |  MSME: UDYAM-WB-14-0002339",ML+31,24);
-      doc.text("LUT NO AD190326030261F  |  WWW.MICBACINDIA.COM",ML+CW,24,{align:"right"});
-      let Y=30+3;
-      // Document title row
-      fn(13,"bold"); tc(GREEN); doc.text("QUOTATION",ML,Y+7);
-      fn(7,"bold"); tc(GREEN); doc.text(invNo,ML+CW,Y+7,{align:"right"});
-      const tw=doc.getTextWidth("QUOTATION");
-      fc(GOLD); doc.rect(ML,Y+9,tw+4,2.5,"F");
-      Y+=14;
-      // Two-column section
-      const gridTop=Y;
-      let leftY=Y, rightY=Y;
-      // Left: EXPORTER green header
-      fc(GREEN); doc.rect(ML,leftY,LW,7,"F");
-      fn(6,"bold"); tc(WHITE); doc.text("EXPORTER",ML+2,leftY+5); leftY+=7;
-      bx(ML,leftY,LW,26,IVORY,GREEN,0.12);
-      fn(6.5,"bold"); tc(GREEN); doc.text("MICBAC INDIA (OPC) PVT. LTD.",ML+2,leftY+5.5);
-      fn(6,"normal"); tc(GREEN);
-      doc.text("C/314 LOHARUKA GREEN OASIS, KAIKHALI,",ML+2,leftY+10,{maxWidth:LW-3});
-      doc.text("KOLKATA - 700052, INDIA",ML+2,leftY+14.5);
-      doc.text("IEC - AANCM7741C  |  GST: 19AANCM7741C1Z8",ML+2,leftY+19,{maxWidth:LW-3});
-      doc.text("LUT NO AD190326030261F",ML+2,leftY+23.5);
-      leftY+=26;
-      // Left: BILL TO green header
-      fc(GREEN); doc.rect(ML,leftY,LW,7,"F");
-      fn(6,"bold"); tc(WHITE); doc.text("BILL TO",ML+2,leftY+5); leftY+=7;
-      bx(ML,leftY,LW,billH,WHITE,GREEN,0.12);
-      fn(6,"normal"); tc(GREEN);
-      billLines.forEach((l,i)=>doc.text(l,ML+2,leftY+5+i*4.5));
-      leftY+=billH;
-      // Right: meta rows alternating IVORY/WHITE with GREEN borders
-      let RY=rightY;
-      metas.forEach(([l,v,sh],mi)=>{
-        fn(5.5,"bold");
-        const rowText=l+" : "+(v||"");
-        const tLines=doc.splitTextToSize(rowText,RW-4);
-        const rowH=Math.max(7,tLines.length*4.2+3);
-        const bg=mi===0?GOLD:(sh?IVORY:WHITE);
-        bx(RX,RY,RW,rowH,bg,GREEN,0.12);
-        tc(mi===0?DGREEN:GREEN);
-        tLines.forEach((line,li)=>doc.text(line,RX+2,RY+4.5+li*4.2));
-        RY+=rowH;
-      });
-      sc(GREEN); doc.setLineWidth(0.3);
-      doc.line(RX,gridTop,RX,Math.max(leftY,RY));
-      Y=Math.max(leftY,RY)+3;
-      // Goods table header — green bar with ivory text
-      fc(GREEN); doc.rect(ML,Y,CW,7,"F");
-      let cx=ML;
-      hdrs.forEach((h,i)=>{
-        fn(6,"bold"); tc(IVORY);
-        const isR=i>=4, isCtr=i===0||i===2;
-        const px=isR?cx+colW[i]-1.5:isCtr?cx+colW[i]/2:cx+2;
-        doc.text(h,px,Y+5,{align:isR?"right":isCtr?"center":"left",maxWidth:colW[i]-2});
-        if(i<hdrs.length-1){doc.setDrawColor(...IVORY);doc.setLineWidth(0.1);doc.line(cx+colW[i],Y+1,cx+colW[i],Y+6);}
-        cx+=colW[i];
-      });
-      return Y+7;
-    }
-
-    function drawPageBottom() {
-      let Y=sigStartY;
-      doc.addImage("data:image/jpeg;base64,"+SIG,"JPEG",ML+CW-SIG_W,Y,SIG_W,SIG_H);
-      Y+=SIG_H+3;
-      fn(6.5,"bold"); tc(GREEN);
-      doc.text("MICBAC INDIA (OPC) PVT. LTD.",ML+CW,Y,{align:"right"});
-      Y+=5;
-      sc(GREEN); doc.setLineWidth(0.3); doc.line(ML,Y,ML+CW,Y); Y+=3;
-      fn(6,"bold"); tc(GREEN); doc.text("DECLARATION",ML,Y+4); Y+=8;
-      fn(5.5,"normal"); tc(GREEN);
-      DECL_LINES.forEach(l=>{ doc.text(l,ML,Y); Y+=4; });
-      // Green footer band
-      fc(GREEN); doc.rect(0,PH-10,PW,10,"F");
-      fn(5.5,"normal"); tc(IVORY);
-      doc.text("WWW.MICBACINDIA.COM  |  MICBAC.INDIA@GMAIL.COM",PW/2,PH-4,{align:"center"});
-      fn(5,"normal"); tc(IVORY);
-      doc.text("THIS IS A COMPUTER GENERATED DOCUMENT.",ML+CW,PH-4,{align:"right"});
-    }
-
-    const ITEMS_PER_PAGE=4;
-    const chunks=[];
-    for(let i=0;i<goodsRows.length;i+=ITEMS_PER_PAGE)
-      chunks.push(goodsRows.slice(i,i+ITEMS_PER_PAGE));
-    if(chunks.length===0) chunks.push([]);
-
-    const tQ=goodsRows.reduce((s,r)=>s+(parseFloat(r.qty)||0),0);
-    const hasOF=qtOFCarrier||qtOFRate||qtOFTransit;
-
-    chunks.forEach((chunk,pageIdx)=>{
-      if(pageIdx>0) doc.addPage();
-      let Y=drawHeader();
-
-      chunk.forEach((r,ri)=>{
-        const globalRI=pageIdx*ITEMS_PER_PAGE+ri;
-        const desc=(r.desc||"").toUpperCase();
-        const dL=doc.splitTextToSize(desc,colW[1]-3);
-        const rowH=Math.max(10,dL.length*3.8+4);
-        bx(ML,Y,CW,rowH,globalRI%2===0?WHITE:IVORY,GREEN,0.1);
-        fn(6,"normal"); tc(GREEN);
-        let cx=ML;
-        const amt=(parseFloat(r.qty)||0)*(parseFloat(r.rate)||0);
-        const vals=[String(globalRI+1),desc,r.hscode||"",r.unit||"METRIC TONNES",
-          String(r.qty||0),curSym+fmt(r.rate||0)+"/MT",curSym+fmt(amt)];
-        vals.forEach((v,vi)=>{
-          const isR=vi>=4,isCtr=vi===0||vi===2;
-          const px=isR?cx+colW[vi]-1.5:isCtr?cx+colW[vi]/2:cx+2;
-          doc.splitTextToSize(v,colW[vi]-2).forEach((l,li)=>
-            doc.text(l,px,Y+5+li*3.8,{align:isR?"right":isCtr?"center":"left"}));
-          cx+=colW[vi];
-        });
-        Y+=rowH;
-      });
-
-      if(pageIdx===chunks.length-1){
-        // QTY TOTAL row
-        bx(ML,Y,CW-88,7,IVORY,GREEN,0.1);
-        fn(6,"bold"); tc(GREEN);
-        doc.text("QTY TOTAL  "+tQ+" "+((goodsRows[0]?.unit||"METRIC TONNES").toUpperCase()),ML+2,Y+5);
-        // Grand total in GOLD box
-        fc(GOLD); doc.rect(ML+CW-88,Y,88,7,"F");
-        fn(6.5,"bold"); tc(DGREEN);
-        doc.text("TOTAL IN "+curCode,ML+CW-86,Y+5);
-        fn(7,"bold"); doc.text(curSym+fmt(qtNetPayable),ML+CW-1.5,Y+5,{align:"right"});
-        Y+=7;
-        bx(ML,Y,CW,7,IVORY,GREEN,0.1);
-        fn(6,"normal"); tc(GREEN); doc.text("TOLERANCE : "+qtTolerance,ML+2,Y+4.8); Y+=7;
-        if(qtPackaging){
-          const pkgLines=doc.splitTextToSize("PACKAGING : "+qtPackaging,CW-4);
-          const pkgH=Math.max(7,pkgLines.length*4+4);
-          bx(ML,Y,CW,pkgH,WHITE,GREEN,0.1);
-          fn(6,"bold"); tc(GREEN);
-          pkgLines.forEach((l,i)=>doc.text(l,ML+2,Y+5+i*4));
-          Y+=pkgH;
-        }
-        bx(ML,Y,CW,7,IVORY,GREEN,0.1);
-        fn(6,"bold"); tc(GREEN);
-        doc.text("GROSS WEIGHT : "+(grossWt||"-")+" "+qtWtUnit,ML+2,Y+5);
-        if(hasOF) doc.text("OCEAN FREIGHT : "+qtOFCarrier,ML+CW-1.5,Y+5,{align:"right"});
-        Y+=7;
-        bx(ML,Y,CW,7,WHITE,GREEN,0.1);
-        fn(6,"normal"); tc(GREEN);
-        doc.text("NET WEIGHT : "+(netWt||"-")+" "+qtWtUnit,ML+2,Y+5);
-        if(hasOF&&qtOFRate) doc.text("Rate "+qtOFRate,ML+CW-1.5,Y+5,{align:"right"});
-        Y+=7;
-        if(hasOF&&qtOFTransit){
-          bx(ML,Y,CW,7,IVORY,GREEN,0.1);
-          fn(6,"normal"); tc(GREEN);
-          doc.text("T/T: "+qtOFTransit,ML+CW-1.5,Y+5,{align:"right"});
-          Y+=7;
-        }
-        bx(ML,Y,CW,6,IVORY,GREEN,0.1);
-        fn(5.5,"normal"); tc(GREEN);
-        doc.text("E. & OE.",ML+CW-1.5,Y+4.2,{align:"right"});
-      }
-
-      drawPageBottom();
-    });
-
-    return doc;
-  } catch(e) { console.error(e); throw e; }
-}
 
 // ═══════════════════════════════════════════════════════════════════════
 // CURRENCY HELPERS
@@ -1485,7 +1236,7 @@ function restoreDraft(d) {
   if (d.pol) selectPort("pol",d.pol,d.polLabel||d.pol);
   if (d.pod) selectPort("pod",d.pod,d.podLabel||d.pod);
   set("polManual",d.polManual);set("podManual",d.podManual);
-  if (d.goodsRows){goodsRows=d.goodsRows;rebuildGoods();}
+  if (d.goodsRows) goodsRows=d.goodsRows;
   updateBankPreview();updateCurrency();
   if(d.docType) switchDocType(d.docType);
   const qv=(id,v)=>{const e=document.getElementById(id);if(e&&v!=null)e.value=v;};
@@ -1523,7 +1274,7 @@ function renderAddressBook(){
   const sel=document.getElementById("abSelect");if(!sel)return;
   const book=getAddressBook();
   sel.innerHTML="<option value=''>&mdash; Saved Parties &mdash;</option>"+
-    book.map((e,i)=>`<option value="${i}">${e.label}</option>`).join("");
+    book.map((e,i)=>`<option value="${i}">${esc(e.label)}</option>`).join("");
 }
 function saveAddress(){
   const label=document.getElementById("abLabel")?.value.trim();
@@ -1576,6 +1327,21 @@ function autoSumGrossWeight(){
 
 const _MIC_CSS = ":root{--carbon:#0B0B0F;--ink:#16171C;--lime:#C8F23A;--lime-dk:#9BC11A;--paper:#FFFFFF;--ice:#F4F4EF;--mute:#6A6A74;--line:#D8D8D2;--sans:'Inter Tight',system-ui,sans-serif;--mono:'JetBrains Mono',ui-monospace,monospace;}*{box-sizing:border-box;margin:0;padding:0;}html,body{background:#3A3B40;font-family:var(--sans);color:var(--ink);-webkit-print-color-adjust:exact;print-color-adjust:exact;}.toolbar{position:fixed;top:0;left:0;right:0;height:54px;z-index:50;background:rgba(11,11,15,.92);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:space-between;padding:0 22px;border-bottom:1px solid rgba(255,255,255,.1);}.toolbar .tb-brand{display:flex;align-items:center;gap:12px;color:#fff;}.toolbar .tb-brand .nm{font-weight:700;letter-spacing:-.02em;font-size:14px;}.toolbar .tb-brand .sub{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--lime);}.tb-actions{display:flex;gap:8px;}.tb-btn{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;border:1px solid rgba(255,255,255,.22);color:#fff;background:transparent;padding:8px 16px;border-radius:999px;cursor:pointer;transition:.15s;}.tb-btn:hover{background:rgba(255,255,255,.1);}.tb-btn.primary{background:var(--lime);color:var(--carbon);border-color:var(--lime);font-weight:700;}.tb-btn.primary:hover{background:#fff;}.stage{padding:78px 20px 60px;display:flex;flex-direction:column;align-items:center;gap:28px;}.sheet{width:210mm;min-height:297mm;background:var(--paper);position:relative;box-shadow:0 30px 60px -28px rgba(0,0,0,.6);display:flex;flex-direction:column;padding:14mm 14mm 12mm;}.sheet::before{content:\"\";position:absolute;top:0;left:0;right:0;height:5px;background:var(--lime);}.mast{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:9px;border-bottom:2px solid var(--carbon);}.mast-l{display:flex;gap:13px;align-items:center;}.mast-mark{width:54px;height:54px;flex-shrink:0;}.mast-name{font-size:24px;font-weight:700;letter-spacing:-.03em;color:var(--carbon);line-height:1;}.mast-rule{height:2px;width:30px;background:var(--lime);margin:5px 0;}.mast-tag{font-family:var(--mono);font-size:8px;letter-spacing:.26em;text-transform:uppercase;color:var(--carbon);}.mast-r{text-align:right;font-family:var(--mono);font-size:7.5px;line-height:1.75;color:var(--ink);max-width:74mm;}.mast-r .lbl{color:var(--mute);}.mast-r .em{color:var(--carbon);font-weight:600;}.titlebar{display:flex;justify-content:space-between;align-items:flex-end;margin-top:11px;}.titlebar .tick{height:3px;width:26px;background:var(--lime);margin-bottom:6px;}.titlebar h1{font-size:22px;font-weight:700;letter-spacing:-.035em;color:var(--carbon);line-height:.95;text-transform:uppercase;}.titlebar .meta-no{text-align:right;font-family:var(--mono);font-size:10px;line-height:1.6;white-space:nowrap;}.titlebar .meta-no .lbl{color:var(--mute);}.titlebar .meta-no .v{color:var(--carbon);font-weight:700;}.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-bottom:none;margin-top:11px;}.cell{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:8px 11px;}.cell:nth-child(2n){border-right:none;}.cell .k{font-family:var(--mono);font-size:7px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);margin-bottom:4px;}.cell .vmain{font-size:11px;font-weight:600;color:var(--carbon);line-height:1.3;}.cell .vsub{font-size:9.5px;color:var(--ink);line-height:1.45;margin-top:2px;}.ship{border:1px solid var(--line);border-top:none;}.ship-row{display:grid;grid-template-columns:1fr 1fr;}.ship-row>div{display:grid;grid-template-columns:120px 1fr;border-bottom:1px solid var(--line);}.ship-row>div:first-child{border-right:1px solid var(--line);}.ship-row:last-child>div{border-bottom:none;}.ship .k{font-family:var(--mono);font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);padding:6px 10px;background:var(--ice);display:flex;align-items:center;}.ship .v{font-size:10px;color:var(--carbon);font-weight:500;padding:6px 10px;display:flex;align-items:center;}.items{margin-top:12px;width:100%;border-collapse:collapse;}.items thead th{background:var(--carbon);color:var(--paper);font-family:var(--mono);font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;padding:8px 9px;text-align:left;font-weight:600;}.items thead th.r{text-align:right;}.items tbody td{border-bottom:1px solid var(--line);border-left:1px solid var(--line);padding:11px 9px;vertical-align:top;font-size:10.5px;}.items tbody td:last-child{border-right:1px solid var(--line);}.items tbody td.r{text-align:right;font-family:var(--mono);white-space:nowrap;}.items .desc-main{font-weight:600;color:var(--carbon);}.items .desc-grade{font-family:var(--mono);font-size:8.5px;color:var(--lime-dk);margin-top:3px;letter-spacing:.04em;font-weight:600;}.items .num{font-family:var(--mono);font-weight:600;color:var(--carbon);}.strip{background:var(--ice);border-left:3px solid var(--lime);padding:7px 12px;display:flex;flex-wrap:wrap;gap:4px 26px;font-size:9.5px;}.strip .k{font-family:var(--mono);font-size:7px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-right:6px;}.strip .v{color:var(--carbon);font-weight:600;}.paysum{display:grid;grid-template-columns:1.35fr 1fr;gap:11px;margin-top:12px;align-items:start;}.box{border:1px solid var(--line);}.box-h{font-family:var(--mono);font-size:7.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--paper);background:var(--carbon);padding:6px 11px;}.pay-body{padding:10px 13px;display:grid;grid-template-columns:auto 1fr;column-gap:16px;row-gap:5px;font-family:var(--mono);font-size:8px;align-items:baseline;}.pay-body .pk{color:var(--mute);white-space:nowrap;letter-spacing:.03em;}.pay-body .pv{color:var(--carbon);min-width:0;word-break:break-word;overflow-wrap:break-word;line-height:1.5;}.sum-body{padding:4px 12px 8px;}.sum-row{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px dashed var(--line);font-size:9.5px;gap:8px;}.sum-row .sk{color:var(--mute);flex:1;min-width:0;}.sum-row .sv{font-family:var(--mono);font-weight:600;color:var(--carbon);white-space:nowrap;flex-shrink:0;text-align:right;}.sum-row.net{background:var(--carbon);color:var(--paper);border:none;margin:6px -12px 0;padding:11px 12px;}.sum-row.net .sk{color:rgba(255,255,255,.7);font-weight:600;text-transform:uppercase;font-family:var(--mono);font-size:9px;letter-spacing:.1em;}.sum-row.net .sv{color:var(--lime);font-size:15px;white-space:nowrap;}.sign{display:flex;justify-content:space-between;align-items:flex-end;margin-top:18px;}.sign .words{font-size:9px;color:var(--mute);max-width:58%;line-height:1.5;}.sign .words .amt{color:var(--carbon);font-weight:600;}.sign .sigbox{text-align:right;}.sign .forco{font-size:10px;color:var(--carbon);margin-bottom:4px;font-weight:600;}.sign .sigline{border-top:1px solid var(--carbon);padding-top:3px;display:inline-block;min-width:180px;}.sign .sigline .role{font-family:var(--mono);font-size:7.5px;letter-spacing:.1em;color:var(--mute);}.terms{margin-top:14px;border-top:1px solid var(--line);padding-top:9px;}.terms h4{font-family:var(--mono);font-size:7.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);margin-bottom:5px;}.terms ul{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:2px 24px;}.terms li{font-size:8.5px;color:var(--ink);padding-left:12px;position:relative;line-height:1.5;}.terms li::before{content:\"\";position:absolute;left:0;top:6px;width:4px;height:4px;background:var(--lime);}.foot{padding-top:10px;display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:7.5px;letter-spacing:.06em;color:var(--mute);border-top:2px solid var(--carbon);margin-top:12px;}.foot .doc-orig{color:var(--carbon);font-weight:600;}.wgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;margin-top:12px;}.wcard{border:1px solid var(--line);padding:11px 13px;}.wcard .wk{font-family:var(--mono);font-size:7px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-bottom:5px;}.wcard .wv{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--carbon);}.wcard .wu{font-size:9px;color:var(--mute);margin-top:2px;}.wcard.hl{background:var(--carbon);}.wcard.hl .wk{color:rgba(255,255,255,.7);}.wcard.hl .wv{color:var(--lime);}.wcard.hl .wu{color:rgba(255,255,255,.6);}@media print{html,body{background:#fff;}.toolbar{display:none;}.stage{padding:0;gap:0;}.sheet{box-shadow:none;margin:0;width:auto;min-height:auto;}#s0 .sheet{page-break-after:always;break-after:page;}#s1 .sheet{page-break-after:avoid;break-after:avoid;}@page{size:A4;margin:0;}}";
 
+// ── Shared utilities ─────────────────────────────────────────────────────────
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// Dot-pore SVG mark — computed once, reused across all document builders
+const _MARK_SVG=(()=>{
+  const dots=[];const R=44,step=6.8;
+  for(let row=-7;row<=7;row++){const y=row*step*0.866;const off=row%2===0?0:step/2;
+    for(let col=-7;col<=7;col++){const x=col*step+off;const d=Math.sqrt(x*x+y*y);
+      if(d>R-3.5||d<5.2)continue;const r=d<12?2.0:d<22?1.7:d<32?1.3:1.0;
+      dots.push('<circle cx="'+(50+x).toFixed(2)+'" cy="'+(50+y).toFixed(2)+'" r="'+r+'" fill="#0B0B0F"/>');
+    }
+  }
+  return '<svg width="54" height="54" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="47" stroke="#0B0B0F" stroke-width="1.2"/>'+dots.join('')+'<circle cx="50" cy="50" r="4.2" fill="#C8F23A"/><circle cx="50" cy="50" r="7.2" stroke="#C8F23A" stroke-width="0.6" opacity="0.45"/></svg>';
+})();
+
 // ═══════════════════════════════════════════════════════════════════════
 // HTML INVOICE GENERATOR — produces the exact Precision × Carbon design
 // ═══════════════════════════════════════════════════════════════════════
@@ -1619,14 +1385,7 @@ function buildQuotationHTML() {
 
   function mn(n){return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
-  const dots=[];const R=44,step=6.8;
-  for(let row=-7;row<=7;row++){const y=row*step*0.866;const off=row%2===0?0:step/2;
-    for(let col=-7;col<=7;col++){const x=col*step+off;const d=Math.sqrt(x*x+y*y);
-      if(d>R-3.5||d<5.2)continue;const r=d<12?2.0:d<22?1.7:d<32?1.3:1.0;
-      dots.push('<circle cx="'+(50+x).toFixed(2)+'" cy="'+(50+y).toFixed(2)+'" r="'+r+'" fill="#0B0B0F"/>');
-    }
-  }
-  const MARK='<svg width="54" height="54" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="47" stroke="#0B0B0F" stroke-width="1.2"/>'+dots.join('')+'<circle cx="50" cy="50" r="4.2" fill="#C8F23A"/><circle cx="50" cy="50" r="7.2" stroke="#C8F23A" stroke-width="0.6" opacity="0.45"/></svg>';
+  const MARK=_MARK_SVG;
 
   const MAST='<div class="mast"><div class="mast-l"><div class="mast-mark">'+MARK+'</div><div><div class="mast-name">MICBAC INDIA</div><div class="mast-rule"></div><div class="mast-tag">ACTIVATED CARBON &middot; KOLKATA</div></div></div>'
     +'<div class="mast-r"><div class="em" style="font-size:9px;margin-bottom:2px;">MICBAC INDIA (OPC) PRIVATE LIMITED</div>'
@@ -1783,14 +1542,7 @@ function buildHTMLDoc() {
   }
 
   // Dot-pore mark SVG (self-contained, no external deps)
-  const dots=[];const R=44,step=6.8;
-  for(let row=-7;row<=7;row++){const y=row*step*0.866;const off=row%2===0?0:step/2;
-    for(let col=-7;col<=7;col++){const x=col*step+off;const d=Math.sqrt(x*x+y*y);
-      if(d>R-3.5||d<5.2)continue;const r=d<12?2.0:d<22?1.7:d<32?1.3:1.0;
-      dots.push('<circle cx="'+(50+x).toFixed(2)+'" cy="'+(50+y).toFixed(2)+'" r="'+r+'" fill="#0B0B0F"/>');
-    }
-  }
-  const MARK='<svg width="54" height="54" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="47" stroke="#0B0B0F" stroke-width="1.2"/>'+dots.join('')+'<circle cx="50" cy="50" r="4.2" fill="#C8F23A"/><circle cx="50" cy="50" r="7.2" stroke="#C8F23A" stroke-width="0.6" opacity="0.45"/></svg>';
+  const MARK=_MARK_SVG;
 
   const MAST='<div class="mast"><div class="mast-l"><div class="mast-mark">'+MARK+'</div><div><div class="mast-name">MICBAC INDIA</div><div class="mast-rule"></div><div class="mast-tag">ACTIVATED CARBON &middot; KOLKATA</div></div></div>'
     +'<div class="mast-r"><div class="em" style="font-size:9px;margin-bottom:2px;">MICBAC INDIA (OPC) PRIVATE LIMITED</div>'
@@ -2294,11 +2046,6 @@ const LH_LOGO = "iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAA/GUlEQVR4Xu2dDbQ
 // OFFICIAL LETTER PDF
 // ═══════════════════════════════════════════════════════════════════════
 function buildLetterHTML() {
-  function esc(s) {
-    return String(s)
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
   const v = id => document.getElementById(id)?.value || "";
   const ref     = v("ltrRef") || "MIPLWB/LTR/001/25-26";
   const rawDate = v("ltrDate");
@@ -2536,10 +2283,10 @@ function renderRecordsTable(recs) {
     const amt = r.amount ? r.currency + ' ' + Number(r.amount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '-';
     const at = r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
     return `<tr>
-      <td class="td-no">${r.invNo||'-'}</td>
-      <td>${r.invDate||'-'}</td>
+      <td class="td-no">${esc(r.invNo||'-')}</td>
+      <td>${esc(r.invDate||'-')}</td>
       <td><span class="td-type ${typeLabel}">${typeLabel}</span></td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.buyer}">${r.buyer||'-'}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.buyer)}">${esc(r.buyer||'-')}</td>
       <td class="td-amt">${amt}</td>
       <td style="color:var(--muted);font-size:.75rem">${r.pol||'-'}</td>
       <td style="color:var(--muted);font-size:.75rem">${r.pod||'-'}</td>

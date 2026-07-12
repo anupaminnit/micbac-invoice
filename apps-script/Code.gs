@@ -9,14 +9,19 @@
 
 const SPREADSHEET_ID = ''; // ← paste your Google Sheet ID here
 const SHEET_NAME = 'Invoice Records';
-const COLUMNS = ['id','createdAt','docType','invNo','invDate','buyer','amount','currency','pol','pod','items'];
-const HEADERS  = ['ID','Created At','Doc Type','Invoice No.','Invoice Date','Buyer','Amount','Currency','POL','POD','Items'];
+// ← must match APPS_SCRIPT_TOKEN in index.html exactly, or every request is rejected.
+// Generate your own with `openssl rand -hex 20` — don't reuse the value from any example.
+const TOKEN = '';
+const COLUMNS = ['id','createdAt','docType','invNo','invDate','buyer','amount','currency','pol','pod','items','draftJson'];
+const HEADERS  = ['ID','Created At','Doc Type','Invoice No.','Invoice Date','Buyer','Amount','Currency','POL','POD','Items','Draft JSON'];
 
 function doGet(e) {
   try {
+    if (!checkToken(e && e.parameter && e.parameter.token)) return json({ok: false, error: 'Unauthorized'});
     ensureSheet();
     const action = (e && e.parameter && e.parameter.action) || 'list';
     if (action === 'list') return listRecords();
+    if (action === 'nextInvoiceNo') return nextInvoiceNo(e.parameter.prefix || 'MIPLWB/', e.parameter.fy || '');
     return json({ok: false, error: 'Unknown action'});
   } catch(err) {
     return json({ok: false, error: err.message});
@@ -25,8 +30,9 @@ function doGet(e) {
 
 function doPost(e) {
   try {
-    ensureSheet();
     const body = JSON.parse(e.postData.contents);
+    if (!checkToken(body.token)) return json({ok: false, error: 'Unauthorized'});
+    ensureSheet();
     if (body.action === 'insert') return insertRecord(body.record);
     if (body.action === 'delete') return deleteRecord(body.id);
     if (body.action === 'clear')  return clearAll();
@@ -37,6 +43,12 @@ function doPost(e) {
 }
 
 // ── helpers ────────────────────────────────────────────────────────────
+
+// Fails closed: an empty TOKEN constant means every request is rejected,
+// not accepted — you must set TOKEN before this deployment is usable.
+function checkToken(t) {
+  return !!TOKEN && t === TOKEN;
+}
 
 function json(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
@@ -80,6 +92,30 @@ function listRecords() {
     .reverse();           // most recent first
 
   return json({ok: true, records});
+}
+
+// Scans existing invNo values for "<prefix><NNN>/<fy>" and returns the next
+// sequence number — the Sheet is the source of truth, not the browser's
+// localStorage, so numbering stays unique across devices/browsers.
+function nextInvoiceNo(prefix, fy) {
+  const sheet = getSheet();
+  const lastRow = sheet.getLastRow();
+  let maxSeq = 0;
+  if (lastRow > 1) {
+    const col = COLUMNS.indexOf('invNo') + 1;
+    const invNos = sheet.getRange(2, col, lastRow - 1, 1).getValues().flat();
+    const re = new RegExp('^' + escapeRegex(prefix) + '(\\d+)/' + escapeRegex(fy) + '$');
+    invNos.forEach(v => {
+      const m = String(v).match(re);
+      if (m) { const n = parseInt(m[1], 10); if (n > maxSeq) maxSeq = n; }
+    });
+  }
+  const next = String(maxSeq + 1).padStart(3, '0');
+  return json({ok: true, invNo: prefix + next + '/' + fy});
+}
+
+function escapeRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function insertRecord(rec) {

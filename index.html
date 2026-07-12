@@ -116,6 +116,8 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
 .rec-table .td-type.quotation{background:#FFF8E1;color:#E65100}
 .rec-table .td-del{background:none;border:none;color:#ccc;cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;transition:.15s}
 .rec-table .td-del:hover{color:#c62828;background:#FFEBEE}
+.rec-table .td-load{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;transition:.15s}
+.rec-table .td-load:hover{color:var(--dorg);background:var(--lorg)}
 .rec-footer{padding:12px 20px;display:flex;gap:10px;border-top:1px solid var(--border);background:#FAFAFA;justify-content:space-between;align-items:center;flex-shrink:0}
 .rec-count{font-size:.78rem;color:var(--muted)}
 
@@ -1186,15 +1188,33 @@ function getCurrentFY() {
   const n=new Date(),y=n.getFullYear(),m=n.getMonth()+1,s=m>=4?y:y-1;
   return String(s).slice(-2)+"-"+String(s+1).slice(-2);
 }
-function autoInvoiceNumber() {
-  const el = document.getElementById("invNo");
-  if (!el || el.value) return;
+function fallbackInvoiceNo() {
   const saved = localStorage.getItem("micbac_last_inv_no");
   if (saved) {
     const m = saved.match(/^([A-Z\/]+)(\d+)\//);
-    if (m) { el.value = m[1]+String(parseInt(m[2])+1).padStart(3,"0")+"/"+getCurrentFY(); return; }
+    if (m) return m[1]+String(parseInt(m[2])+1).padStart(3,"0")+"/"+getCurrentFY();
   }
-  el.value = "MIPLWB/001/"+getCurrentFY();
+  return "MIPLWB/001/"+getCurrentFY();
+}
+// localStorage only tracks "last number issued by this browser" — across
+// devices that drifts out of sync and produces duplicate invoice numbers.
+// Fill in the local guess immediately (so the field isn't empty), then ask
+// the Sheet — the actual source of truth — for the real next number and
+// swap it in, unless the user has since typed something else themselves.
+function autoInvoiceNumber() {
+  const el = document.getElementById("invNo");
+  if (!el || el.value) return;
+  const fallback = fallbackInvoiceNo();
+  el.value = fallback;
+  if (!APPS_SCRIPT_URL) return;
+  const m = fallback.match(/^([A-Z\/]+)\d+\//);
+  const prefix = m ? m[1] : "MIPLWB/";
+  const fy = getCurrentFY();
+  const url = APPS_SCRIPT_URL + '?action=nextInvoiceNo&prefix=' + encodeURIComponent(prefix)
+    + '&fy=' + encodeURIComponent(fy) + '&token=' + encodeURIComponent(APPS_SCRIPT_TOKEN);
+  fetch(url).then(r => r.json()).then(data => {
+    if (data.ok && data.invNo && el.value === fallback) el.value = data.invNo;
+  }).catch(e => console.warn('nextInvoiceNo lookup failed, using local fallback:', e));
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2244,6 +2264,10 @@ function rteColor(c) {
 // INVOICE RECORDS — Google Sheets backend via Apps Script
 // ═══════════════════════════════════════════════════════════════════════
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby-qX0Zv9v39KLi-q8O2kOSGA2-YTwc3-L2N-di3o7E5IIhkRDWGn7qBIRWSjFyHo22/exec'; // Paste your deployed Web App URL here
+// Must match TOKEN in apps-script/Code.gs exactly. This is NOT a real secret —
+// anyone who views this page's source can read it — it only stops the bare
+// Web App URL (if it ever leaks on its own) from granting read/wipe access.
+const APPS_SCRIPT_TOKEN = 'PASTE_YOUR_TOKEN_HERE'; // ← generate with `openssl rand -hex 20`, paste same value in Code.gs TOKEN
 
 let _cachedRecords = [];
 
@@ -2261,11 +2285,12 @@ function saveInvoiceRecord() {
     pol: getPort('pol') || gr('pol') || '',
     pod: getPort('pod') || gr('pod') || '',
     items: goodsRows.length,
+    draftJson: JSON.stringify(getDraftData()),
   };
   if (!rec.invNo && !rec.buyer) return;
   fetch(APPS_SCRIPT_URL, {
     method: 'POST', mode: 'no-cors',
-    body: JSON.stringify({action: 'insert', record: rec}),
+    body: JSON.stringify({action: 'insert', record: rec, token: APPS_SCRIPT_TOKEN}),
   }).catch(e => console.warn('Record save failed:', e));
 }
 
@@ -2291,7 +2316,10 @@ function renderRecordsTable(recs) {
       <td style="color:var(--muted);font-size:.75rem">${r.pol||'-'}</td>
       <td style="color:var(--muted);font-size:.75rem">${r.pod||'-'}</td>
       <td style="color:var(--muted);font-size:.75rem;white-space:nowrap">${at}</td>
-      <td><button class="td-del" onclick="deleteRecord(${r.id})" title="Delete">&#10005;</button></td>
+      <td style="white-space:nowrap">
+        <button class="td-load" onclick="loadRecordToForm(${r.id})" title="Load into form">&#8635;</button>
+        <button class="td-del" onclick="deleteRecord(${r.id})" title="Delete">&#10005;</button>
+      </td>
     </tr>`;
   }).join('');
   body.innerHTML = `<table class="rec-table">
@@ -2313,7 +2341,7 @@ async function showRecords() {
     return;
   }
   try {
-    const res = await fetch(APPS_SCRIPT_URL + '?action=list');
+    const res = await fetch(APPS_SCRIPT_URL + '?action=list&token=' + encodeURIComponent(APPS_SCRIPT_TOKEN));
     const data = await res.json();
     _cachedRecords = data.ok ? data.records : [];
     renderRecordsTable(_cachedRecords);
@@ -2323,11 +2351,26 @@ async function showRecords() {
 }
 function closeRecords() { document.getElementById('recModal').classList.remove('open'); }
 
+// Restores a past record's full saved form state (draftJson) back into the
+// wizard so it can be reprinted, corrected, or cloned — records saved before
+// this field existed only have summary data and can't be reloaded.
+function loadRecordToForm(id) {
+  const r = _cachedRecords.find(rec => String(rec.id) === String(id));
+  if (!r) return;
+  if (!r.draftJson) { toast('This record predates reprint support — no saved form data to load','err'); return; }
+  try {
+    restoreDraft(JSON.parse(r.draftJson));
+    closeRecords();
+    go(0);
+    toast('Loaded '+(r.invNo||'record')+' into the form','ok');
+  } catch(e) { toast('Failed to load record: '+e.message,'err'); }
+}
+
 function deleteRecord(id) {
   if (!APPS_SCRIPT_URL) return;
   fetch(APPS_SCRIPT_URL, {
     method: 'POST', mode: 'no-cors',
-    body: JSON.stringify({action: 'delete', id}),
+    body: JSON.stringify({action: 'delete', id, token: APPS_SCRIPT_TOKEN}),
   }).catch(e => console.warn('Delete failed:', e));
   _cachedRecords = _cachedRecords.filter(r => r.id !== id);
   renderRecordsTable(_cachedRecords);
@@ -2338,7 +2381,7 @@ function clearAllRecords() {
   if (!APPS_SCRIPT_URL) return;
   fetch(APPS_SCRIPT_URL, {
     method: 'POST', mode: 'no-cors',
-    body: JSON.stringify({action: 'clear'}),
+    body: JSON.stringify({action: 'clear', token: APPS_SCRIPT_TOKEN}),
   }).catch(e => console.warn('Clear failed:', e));
   _cachedRecords = [];
   renderRecordsTable([]);

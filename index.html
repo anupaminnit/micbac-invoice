@@ -1855,11 +1855,13 @@ function buildHTMLDoc() {
   let gstRows='';
   if(gst.type==='igst18'){
     gstRows='<div class="sum-row"><span class="sk">Sub Total ('+curr+')</span><span class="sv">'+curSym+' '+mn(total)+'</span></div>'
-      +'<div class="sum-row"><span class="sk">IGST @ 18%</span><span class="sv">'+curSym+' '+mn(gst.igst)+'</span></div>';
+      +'<div class="sum-row"><span class="sk">IGST @ 18%</span><span class="sv">'+curSym+' '+mn(gst.igst)+'</span></div>'
+      +'<div class="sum-row"><span class="sk">Total Amount ('+curr+')</span><span class="sv">'+curSym+' '+mn(netTotal)+'</span></div>';
   } else if(gst.type==='cgst_sgst5'){
     gstRows='<div class="sum-row"><span class="sk">Sub Total ('+curr+')</span><span class="sv">'+curSym+' '+mn(total)+'</span></div>'
       +'<div class="sum-row"><span class="sk">CGST @ 2.5%</span><span class="sv">'+curSym+' '+mn(gst.cgst)+'</span></div>'
-      +'<div class="sum-row"><span class="sk">SGST @ 2.5%</span><span class="sv">'+curSym+' '+mn(gst.sgst)+'</span></div>';
+      +'<div class="sum-row"><span class="sk">SGST @ 2.5%</span><span class="sv">'+curSym+' '+mn(gst.sgst)+'</span></div>'
+      +'<div class="sum-row"><span class="sk">Total Amount ('+curr+')</span><span class="sv">'+curSym+' '+mn(netTotal)+'</span></div>';
   } else {
     gstRows='<div class="sum-row"><span class="sk">Tax on Rev. Charges</span><span class="sv">NIL (EXPORT)</span></div>'
       +'<div class="sum-row"><span class="sk">Total Amount ('+curr+')</span><span class="sv">'+curSym+' '+mn(total)+'</span></div>';
@@ -2199,9 +2201,9 @@ function buildDoc(jsPDF, isProforma=false) {
           fn(6,"bold"); tc(WHITE); doc.text("AMOUNT SUMMARY",AX+AMT_W/2,botTop+4.8,{align:"center"});
           let amtData;
           if(_gst.type==='igst18'){
-            amtData=[["SUB TOTAL ("+curCode+")",curSym+fmt(grandTotal),false],["IGST @ 18%",curSym+fmt(_gst.igst),false],["ADVANCE RECEIVED","NIL",false],["ROUND-OFF","NIL",false]];
+            amtData=[["SUB TOTAL ("+curCode+")",curSym+fmt(grandTotal),false],["IGST @ 18%",curSym+fmt(_gst.igst),false],["TOTAL AMOUNT ("+curCode+")",curSym+fmt(netPayable),true],["ADVANCE RECEIVED","NIL",false],["ROUND-OFF","NIL",false]];
           } else if(_gst.type==='cgst_sgst5'){
-            amtData=[["SUB TOTAL ("+curCode+")",curSym+fmt(grandTotal),false],["CGST @ 2.5%",curSym+fmt(_gst.cgst),false],["SGST @ 2.5%",curSym+fmt(_gst.sgst),false],["ADVANCE RECEIVED","NIL",false],["ROUND-OFF","NIL",false]];
+            amtData=[["SUB TOTAL ("+curCode+")",curSym+fmt(grandTotal),false],["CGST @ 2.5%",curSym+fmt(_gst.cgst),false],["SGST @ 2.5%",curSym+fmt(_gst.sgst),false],["TOTAL AMOUNT ("+curCode+")",curSym+fmt(netPayable),true],["ADVANCE RECEIVED","NIL",false],["ROUND-OFF","NIL",false]];
           } else {
             amtData=[["TAX ON REV. CHARGES","NIL (EXPORT)",false],["TOTAL AMOUNT ("+curCode+")",curSym+fmt(grandTotal),true],["ADVANCE RECEIVED","NIL",false],["ROUND-OFF","NIL",false]];
           }

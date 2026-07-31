@@ -1349,6 +1349,7 @@ const _MIC_CSS = ":root{--carbon:#0B0B0F;--ink:#16171C;--lime:#C8F23A;--lime-dk:
 
 // ── Shared utilities ─────────────────────────────────────────────────────────
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function escNl(s){return esc(s).replace(/\n/g,'<br>');}
 
 // Dot-pore SVG mark — computed once, reused across all document builders
 const _MARK_SVG=(()=>{
@@ -1446,7 +1447,7 @@ function buildQuotationHTML() {
   const SHIP='<div class="ship">'+shipR+'</div>';
 
   const iRows=items.map(it=>'<tr><td class="num">'+it.sr+'</td>'
-    +'<td><div class="desc-main">'+it.desc+'</div>'+(it.hs?'<div class="desc-grade">HS: '+it.hs+'</div>':'')+'</td>'
+    +'<td><div class="desc-main">'+escNl(it.desc)+'</div>'+(it.hs?'<div class="desc-grade">HS: '+it.hs+'</div>':'')+'</td>'
     +'<td class="num r">'+it.hs+'</td><td>'+it.unit+'</td>'
     +'<td class="r">'+it.qty+'</td>'
     +'<td class="r">'+curSym+' '+mn(it.rate)+'/MT</td>'
@@ -1581,7 +1582,7 @@ function buildHTMLDoc() {
   const PARTIES='<div class="pgrid">'
     +'<div class="cell" style="border-right:1px solid var(--line);">'
     +'<div class="k">CONSIGNEE / BUYER'+(consType==='order'?' &mdash; TO THE ORDER':'')+'</div>'
-    +'<div class="vmain">'+consStr+'</div><div class="vsub">'+nAddr+'</div>'
+    +'<div class="vmain">'+consStr+'</div>'+(consType==='order'?'':'<div class="vsub">'+nAddr+'</div>')
     +(nTax?'<div class="vsub" style="margin-top:4px;"><span style="color:var(--mute);font-family:var(--mono);font-size:8px;">TAX CODE:</span> '+nTax+'</div>':'')
     +'</div><div class="cell"><div class="k">NOTIFY PARTY</div>'
     +'<div class="vmain">'+notify+'</div><div class="vsub">'+nAddr+'</div>'
@@ -1595,7 +1596,7 @@ function buildHTMLDoc() {
   const SHIP='<div class="ship">'+shipR+'</div>';
 
   const iRows=items.map(it=>'<tr><td class="num">'+it.sr+'</td>'
-    +'<td><div class="desc-main">'+it.desc+'</div>'+(it.hs?'<div class="desc-grade">HS: '+it.hs+'</div>':'')+'</td>'
+    +'<td><div class="desc-main">'+escNl(it.desc)+'</div>'+(it.hs?'<div class="desc-grade">HS: '+it.hs+'</div>':'')+'</td>'
     +'<td class="num r">'+it.hs+'</td><td>'+it.unit+'</td>'
     +'<td class="r">'+it.qty+'</td>'
     +'<td class="r">'+curSym+' '+mn(it.rate)+'/MT</td>'
@@ -1610,7 +1611,7 @@ function buildHTMLDoc() {
     +'<span><span class="k">PACKING</span><span class="v">'+(pkgTotal||pkgCount+' '+pkgType+(pkgDesc?' &mdash; '+pkgDesc:''))+'</span></span></div>';
 
   const pRows=items.map(it=>'<tr><td class="num">'+it.sr+'</td>'
-    +'<td><div class="desc-main">'+it.desc+'</div>'+(it.hs?'<div class="desc-grade">HS: '+it.hs+'</div>':'')+'</td>'
+    +'<td><div class="desc-main">'+escNl(it.desc)+'</div>'+(it.hs?'<div class="desc-grade">HS: '+it.hs+'</div>':'')+'</td>'
     +'<td class="num r">'+it.hs+'</td><td>'+it.unit+'</td>'
     +'<td class="r">'+it.qty+'</td><td class="r">'+it.bags+'</td>'
     +'<td class="r" style="font-weight:700;">'+mn(it.gross)+' KGS</td></tr>').join('');

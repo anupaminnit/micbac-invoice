@@ -38,5 +38,25 @@
 - Duplicate-record guard is per browser (localStorage). A different device reprinting the same doc can still add a row; a server-side upsert in Code.gs would fix that but needs a redeploy.
 - Historic quotations numbered `MIPLWB/NNN` stay in the Sheet and still count toward the invoice series max; no data was changed.
 
-**Next — remaining audit items**
-- Float noise in qty totals; quotation tolerance can't be cleared; Agent/Distributor never printed; progress-bar clicks skip validation; named consignee shows notify address; preview hides packing list; Email Draft's second popup likely blocked; letter fields not in drafts; invNo case mismatch; invoice qty-total unit hardcoded; letter date format.
+**Next — remaining audit items** — all fixed in the following session.
+
+## 2026-09-28 — Remaining audit items (7–19)
+
+**Done** (one commit each; 89 browser checks + 12 unit tests pass)
+- Qty totals: `js/quantities.js` (unit-tested) — no float noise, totalled per unit ("28 METRIC TONNES + 18 BAGS").
+- Documents: named consignee prints its own name/address; tax code under notify party; addresses keep line breaks; quotation prints Agent/Distributor; cleared Tolerance stays cleared.
+- Progress-bar jumps validate every skipped step and land on the first incomplete one.
+- Goods table escapes qty/rate/bags/weight (gap from the earlier escaping pass).
+- Preview injects the sheets directly — packing list visible, no #s0/#s1 id clash.
+- Invoice numbers normalised to upper-case (field on change, records, number tracking).
+- Email Draft opens one window (the document) with an "Open Gmail draft" link in its toolbar — second popup was blocked by browsers.
+- Letter fields included in Save/Load Draft; body sanitised on restore (`sanitizeRichText`); Sheet records omit letter fields.
+- Letter date dd.mm.yyyy; `todayISO()` local-time helper replaces UTC/duplicated date code.
+
+**Decisions**
+- Email flow is now two clicks (save PDF, then "Open Gmail draft") — the only way both windows open reliably.
+- Record fingerprints changed shape (letter fields excluded), so the first re-download of each already-saved doc after deploy adds one more row.
+
+**Open / next**
+- Invoice RATE column always says "/MT", even for rows in another unit (e.g. BAGS).
+

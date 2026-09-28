@@ -842,9 +842,9 @@ function addGoodsRow() {
 function buildSummary() {
   const gst = computeGST();
   document.getElementById("summaryGrid").innerHTML = [
-    {t:"Invoice",           h:`<p><strong>${g("invNo")}</strong><br>Date: ${fd(gr("invDate"))}<br>Contract: ${gr("ctNo")}</p>`},
-    {t:"Consignee / Notify",h:`<p>${gr("notifyName")}<br>Tax: ${gr("notifyTax")}</p>`},
-    {t:"Ports",             h:`<p>Loading: ${getPort("pol")||gr("pol")}<br>Destination: ${getPort("pod")||gr("pod")}</p>`},
+    {t:"Invoice",           h:`<p><strong>${esc(g("invNo"))}</strong><br>Date: ${fd(gr("invDate"))}<br>Contract: ${esc(gr("ctNo"))}</p>`},
+    {t:"Consignee / Notify",h:`<p>${esc(gr("notifyName"))}<br>Tax: ${esc(gr("notifyTax"))}</p>`},
+    {t:"Ports",             h:`<p>Loading: ${esc(getPort("pol"))}<br>Destination: ${esc(getPort("pod"))}</p>`},
     {t:"Goods",             h:`<p>${goodsRows.length} line item(s)<br>Total: ${getCurrSymbol()}${fmt(gst.net)}</p>`},
   ].map(b=>`<div class="sb"><h4>${b.t}</h4>${b.h}</div>`).join("");
   document.getElementById("summGrand").textContent = getCurrSymbol()+fmt(gst.net);
@@ -1444,38 +1444,38 @@ const _MARK_SVG=(()=>{
 // HTML INVOICE GENERATOR — produces the exact Precision × Carbon design
 // ═══════════════════════════════════════════════════════════════════════
 function buildQuotationHTML() {
-  const inv        = g("invNo");
+  const inv        = esc(g("invNo"));
   const date       = fd(gr("invDate"));
-  const ctType     = g("ctType");
-  const inco       = g("inco");
-  const payT       = gr("payTerms").toUpperCase();
-  const coo        = g("coo") || "INDIA";
-  const polV       = getPort("pol").toUpperCase();
-  const podV       = getPort("pod").toUpperCase();
-  const notify     = gr("notifyName").toUpperCase();
-  const nAddr      = gr("notifyAddr").toUpperCase();
-  const nTax       = gr("notifyTax").toUpperCase();
-  const qtAttn     = gr("qtAttn").toUpperCase();
-  const qtGrossWt  = gr("qtGrossWt");
-  const qtNetWt    = gr("qtNetWt");
+  const ctType     = esc(g("ctType"));
+  const inco       = esc(g("inco"));
+  const payT       = esc(gr("payTerms").toUpperCase());
+  const coo        = esc(g("coo") || "INDIA");
+  const polV       = esc(getPort("pol").toUpperCase());
+  const podV       = esc(getPort("pod").toUpperCase());
+  const notify     = esc(gr("notifyName").toUpperCase());
+  const nAddr      = esc(gr("notifyAddr").toUpperCase());
+  const nTax       = esc(gr("notifyTax").toUpperCase());
+  const qtAttn     = esc(gr("qtAttn").toUpperCase());
+  const qtGrossWt  = esc(gr("qtGrossWt"));
+  const qtNetWt    = esc(gr("qtNetWt"));
   const qtWtUnit   = qtUnit();
   const qtUnitFull = WT_UNITS[qtWtUnit];
-  const qtTolerance= gr("qtTolerance") || "3%";
-  const qtPackaging= (gr("qtPackaging") || "").toUpperCase();
-  const qtOFCarrier= (gr("qtOFCarrier") || "").toUpperCase();
-  const qtOFRate   = gr("qtOFRate");
-  const qtOFTransit= gr("qtOFTransit");
-  const qtPONo     = (gr("qtPONo") || "").toUpperCase();
-  const qtBuyerCountry = (g("qtBuyerCountry") || "").toUpperCase();
-  const curr       = gr("currency") || "USD";
+  const qtTolerance= esc(gr("qtTolerance") || "3%");
+  const qtPackaging= esc((gr("qtPackaging") || "").toUpperCase());
+  const qtOFCarrier= esc((gr("qtOFCarrier") || "").toUpperCase());
+  const qtOFRate   = esc(gr("qtOFRate"));
+  const qtOFTransit= esc(gr("qtOFTransit"));
+  const qtPONo     = esc((gr("qtPONo") || "").toUpperCase());
+  const qtBuyerCountry = esc((g("qtBuyerCountry") || "").toUpperCase());
+  const curr       = getCurrCode();
   const curSym     = getCurrSymbol();
   const gst        = computeGST();
   const total      = gst.sub;
   const netTotal   = gst.net;
 
   const items = goodsRows.map((r,i) => ({
-    sr: i+1, desc: (r.desc||"").toUpperCase(), hs: (r.hscode||"").toUpperCase(),
-    unit: (r.unit||qtUnitFull).toUpperCase(),
+    sr: i+1, desc: (r.desc||"").toUpperCase(), hs: esc((r.hscode||"").toUpperCase()),
+    unit: esc((r.unit||qtUnitFull).toUpperCase()),
     qty: num(r.qty), rate: num(r.rate),
     amount: num(r.qty)*num(r.rate),
   }));
@@ -1587,29 +1587,29 @@ function buildQuotationHTML() {
 }
 
 function buildHTMLDoc() {
-  const inv      = g("invNo");
+  const inv      = esc(g("invNo"));
   const date     = fd(gr("invDate"));
-  const ctNo     = gr("ctNo").toUpperCase();
+  const ctNo     = esc(gr("ctNo").toUpperCase());
   const ctDate   = fd(gr("ctDate"));
-  const ctType   = g("ctType");
-  const inco     = g("inco");
-  const payT     = gr("payTerms").toUpperCase();
-  const coo      = g("coo") || "INDIA";
-  const polV     = getPort("pol").toUpperCase();
-  const podV     = getPort("pod").toUpperCase();
+  const ctType   = esc(g("ctType"));
+  const inco     = esc(g("inco"));
+  const payT     = esc(gr("payTerms").toUpperCase());
+  const coo      = esc(g("coo") || "INDIA");
+  const polV     = esc(getPort("pol").toUpperCase());
+  const podV     = esc(getPort("pod").toUpperCase());
   const consType = gr("consigneeType");
-  const consStr  = consType==="order" ? "TO THE ORDER" : gr("consigneeName").toUpperCase();
-  const notify   = gr("notifyName").toUpperCase();
-  const nAddr    = gr("notifyAddr").toUpperCase();
-  const nTax     = gr("notifyTax").toUpperCase();
-  const grossWt  = gr("grossWt");
-  const netWt    = gr("netWt");
-  const pkgCount = gr("pkgCount");
-  const pkgType  = g("pkgType");
-  const pkgDesc  = gr("pkgDesc").toUpperCase();
-  const pkgTotal = gr("pkgTotal").toUpperCase();
-  const marking  = gr("marking").toUpperCase();
-  const curr     = gr("currency") || "USD";
+  const consStr  = esc(consType==="order" ? "TO THE ORDER" : gr("consigneeName").toUpperCase());
+  const notify   = esc(gr("notifyName").toUpperCase());
+  const nAddr    = esc(gr("notifyAddr").toUpperCase());
+  const nTax     = esc(gr("notifyTax").toUpperCase());
+  const grossWt  = esc(gr("grossWt"));
+  const netWt    = esc(gr("netWt"));
+  const pkgCount = esc(gr("pkgCount"));
+  const pkgType  = esc(g("pkgType"));
+  const pkgDesc  = esc(gr("pkgDesc").toUpperCase());
+  const pkgTotal = esc(gr("pkgTotal").toUpperCase());
+  const marking  = esc(gr("marking").toUpperCase());
+  const curr     = getCurrCode();
   const curSym   = getCurrSymbol();
   const gst      = computeGST();
   const total    = gst.sub;
@@ -1618,8 +1618,8 @@ function buildHTMLDoc() {
   const bankKey  = document.getElementById("bankAccount")?.value || "currency_cloud";
   const bankRows = (BANKS[bankKey] || BANKS.currency_cloud).rows;
   const items    = goodsRows.map((r,i)=>({
-    sr:i+1, desc:(r.desc||"").toUpperCase(), hs:(r.hscode||"").toUpperCase(),
-    unit:(r.unit||"METRIC TONNES").toUpperCase(),
+    sr:i+1, desc:(r.desc||"").toUpperCase(), hs:esc((r.hscode||"").toUpperCase()),
+    unit:esc((r.unit||"METRIC TONNES").toUpperCase()),
     qty:num(r.qty), rate:num(r.rate),
     amount:num(r.qty)*num(r.rate),
     bags:Math.trunc(num(r.bags)), gross:num(r.itemGrossWt),
@@ -2064,7 +2064,7 @@ function renderRecordsTable(recs) {
   count.textContent = recs.length + ' record' + (recs.length !== 1 ? 's' : '');
   const rows = recs.map((r,i) => {
     const typeLabel = r.docType === 'quotation' ? 'quotation' : (r.docType === 'proforma' ? 'proforma' : 'invoice');
-    const amt = r.amount ? r.currency + ' ' + Number(r.amount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '-';
+    const amt = r.amount ? esc(r.currency) + ' ' + Number(r.amount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '-';
     const at = r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
     return `<tr>
       <td class="td-no">${esc(r.invNo||'-')}</td>
@@ -2072,12 +2072,12 @@ function renderRecordsTable(recs) {
       <td><span class="td-type ${typeLabel}">${typeLabel}</span></td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.buyer)}">${esc(r.buyer||'-')}</td>
       <td class="td-amt">${amt}</td>
-      <td style="color:var(--muted);font-size:.75rem">${r.pol||'-'}</td>
-      <td style="color:var(--muted);font-size:.75rem">${r.pod||'-'}</td>
+      <td style="color:var(--muted);font-size:.75rem">${esc(r.pol||'-')}</td>
+      <td style="color:var(--muted);font-size:.75rem">${esc(r.pod||'-')}</td>
       <td style="color:var(--muted);font-size:.75rem;white-space:nowrap">${at}</td>
       <td style="white-space:nowrap">
-        <button class="td-load" onclick="loadRecordToForm(${r.id})" title="Load into form">&#8635;</button>
-        <button class="td-del" onclick="deleteRecord(${r.id})" title="Delete">&#10005;</button>
+        <button class="td-load" onclick="loadRecordToForm(${Number(r.id)||0})" title="Load into form">&#8635;</button>
+        <button class="td-del" onclick="deleteRecord(${Number(r.id)||0})" title="Delete">&#10005;</button>
       </td>
     </tr>`;
   }).join('');
@@ -2131,7 +2131,7 @@ function deleteRecord(id) {
     method: 'POST', mode: 'no-cors',
     body: JSON.stringify({action: 'delete', id, token: APPS_SCRIPT_TOKEN}),
   }).catch(e => console.warn('Delete failed:', e));
-  _cachedRecords = _cachedRecords.filter(r => r.id !== id);
+  _cachedRecords = _cachedRecords.filter(r => String(r.id) !== String(id));
   renderRecordsTable(_cachedRecords);
 }
 

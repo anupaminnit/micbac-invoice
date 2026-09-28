@@ -339,7 +339,7 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
           </div>
         </div>
         <div class="g4">
-          <div class="f"><label>Invoice Number <span>*</span></label><input class="mono" id="invNo" placeholder="MIPLWB/067/25-26"/></div>
+          <div class="f"><label>Invoice Number <span>*</span></label><input class="mono" id="invNo" placeholder="MIPLWB/067/25-26" onchange="this.value=this.value.trim().toUpperCase()"/></div>
           <div class="f"><label>Invoice Date <span>*</span></label><input type="date" id="invDate"/></div>
           <div class="f"><label>Contract Number</label><input id="ctNo" placeholder="MICBAC OMI 027"/></div>
           <div class="f"><label>Contract Date</label><input type="date" id="ctDate"/></div>
@@ -2077,7 +2077,7 @@ function hashStr(str) {
   return (h >>> 0).toString(16);
 }
 function recordKey() {
-  return (isProforma() ? 'proforma' : docType) + '|' + (document.getElementById('invNo')?.value || '').trim();
+  return (isProforma() ? 'proforma' : docType) + '|' + (document.getElementById('invNo')?.value || '').trim().toUpperCase();
 }
 function getSavedFps() {
   try { return JSON.parse(localStorage.getItem(SAVED_FP_KEY) || '{}'); } catch (e) { return {}; }
@@ -2100,7 +2100,7 @@ function saveInvoiceRecord() {
     id: Date.now(),
     createdAt: new Date().toISOString(),
     docType: isProforma() ? 'proforma' : docType,
-    invNo: (document.getElementById('invNo')?.value || '').trim(),
+    invNo: (document.getElementById('invNo')?.value || '').trim().toUpperCase(),
     invDate: gr('invDate') ? fd(gr('invDate')) : '',
     buyer: (gr('notifyName') || gr('qtAttn') || '').trim(),
     amount: computeGST().net,
@@ -2270,7 +2270,7 @@ function makePDF() {
   setTimeout(() => {
     try {
       saveInvoiceRecord();
-      const invNo=document.getElementById("invNo")?.value||"";
+      const invNo=(document.getElementById("invNo")?.value||"").trim().toUpperCase();
       if(invNo) localStorage.setItem(lastNoKey(numberSeries()),invNo);
       const html=docType==='quotation'?buildQuotationHTML():buildHTMLDoc();
         const blob=new Blob([html],{type:'text/html;charset=utf-8'});

@@ -1279,12 +1279,14 @@ function updateCurrency() {
 // ═══════════════════════════════════════════════════════════════════════
 // DATE AUTO-FILL
 // ═══════════════════════════════════════════════════════════════════════
+// Local-time YYYY-MM-DD (toISOString is UTC — yesterday before 05:30 IST).
+function todayISO() {
+  const t = new Date();
+  return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
+}
 function autoFillDate() {
   const el = document.getElementById("invDate");
-  if (el && !el.value) {
-    const t = new Date();
-    el.value = t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
-  }
+  if (el && !el.value) el.value = todayISO();
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1409,8 +1411,7 @@ function loadDraft() {
 }
 function cloneInvoice() {
   const d=getDraftData();
-  const t=new Date();
-  d.invDate=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
+  d.invDate=todayISO();
   restoreDraft(d);
   autoInvoiceNumber(true);   // next number from the Sheet, not a local +1 that may already be taken
   go(0);
@@ -1914,10 +1915,9 @@ function letterBodyHTML() {
 
 function buildLetterHTML() {
   const v = id => document.getElementById(id)?.value || "";
-  const ref     = v("ltrRef") || "MIPLWB/LTR/001/25-26";
+  const ref     = v("ltrRef") || "MIPLWB/LTR/001/"+getCurrentFY();
   const rawDate = v("ltrDate");
-  const dateStr = rawDate ? rawDate.split("-").reverse().join("/")
-                          : new Date().toLocaleDateString("en-IN");
+  const dateStr = fd(rawDate || todayISO());
   const toText  = v("ltrTo");
   const subject = v("ltrSubject");
   const bodyHTML = letterBodyHTML();

@@ -828,11 +828,11 @@ function rebuildGoods() {
       <td><textarea style="min-height:48px;resize:vertical" oninput="goodsRows[${i}].desc=this.value">${esc(r.desc)}</textarea></td>
       <td><input class="mono" value="${esc(r.hscode)}" oninput="goodsRows[${i}].hscode=this.value" style="width:80px"/></td>
       <td><input value="${esc(r.unit)}" oninput="goodsRows[${i}].unit=this.value.toUpperCase();this.value=this.value.toUpperCase()"/></td>
-      <td><input class="mono" type="number" value="${r.qty}" oninput="goodsRows[${i}].qty=this.value;updateTotals()" style="width:64px"/></td>
-      <td><input class="mono" type="number" value="${r.rate}" oninput="goodsRows[${i}].rate=this.value;updateTotals()" style="width:84px"/></td>
+      <td><input class="mono" type="number" value="${esc(r.qty)}" oninput="goodsRows[${i}].qty=this.value;updateTotals()" style="width:64px"/></td>
+      <td><input class="mono" type="number" value="${esc(r.rate)}" oninput="goodsRows[${i}].rate=this.value;updateTotals()" style="width:84px"/></td>
       <td class="mono" style="text-align:right;font-weight:600">${getCurrSymbol()}${fmt(amt)}</td>
-      <td><input class="mono" value="${r.bags||''}" placeholder="e.g. 35" oninput="goodsRows[${i}].bags=this.value" style="width:70px"/></td>
-      <td><input class="mono" value="${r.itemGrossWt||''}" placeholder="e.g. 28199.50" oninput="goodsRows[${i}].itemGrossWt=this.value" style="width:90px"/></td>
+      <td><input class="mono" value="${esc(r.bags||'')}" placeholder="e.g. 35" oninput="goodsRows[${i}].bags=this.value" style="width:70px"/></td>
+      <td><input class="mono" value="${esc(r.itemGrossWt||'')}" placeholder="e.g. 28199.50" oninput="goodsRows[${i}].itemGrossWt=this.value" style="width:90px"/></td>
       <td><button class="del-btn" onclick="goodsRows.splice(${i},1);rebuildGoods()">✕</button></td>`;
     tbody.appendChild(tr);
   });

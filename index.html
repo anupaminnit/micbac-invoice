@@ -2044,8 +2044,36 @@ const APPS_SCRIPT_TOKEN = 'de1345c4ac01c9d50cdd504003e5799fdcbf361b';
 
 let _cachedRecords = [];
 
+// Every download/preview-download/email used to insert a new Sheet row, so one
+// invoice ended up recorded many times. Remember a hash of the last saved form
+// state per (type, number) and skip the insert when nothing has changed; an
+// edited re-issue still gets its own row.
+const SAVED_FP_KEY = 'micbac_saved_fp';
+function hashStr(str) {
+  let h = 0x811c9dc5;                       // FNV-1a, 32-bit
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(16);
+}
+function recordKey() {
+  return (isProforma() ? 'proforma' : docType) + '|' + (document.getElementById('invNo')?.value || '').trim();
+}
+function getSavedFps() {
+  try { return JSON.parse(localStorage.getItem(SAVED_FP_KEY) || '{}'); } catch (e) { return {}; }
+}
+function markSaved(key, fp) {
+  const fps = getSavedFps();
+  fps[key] = fp;
+  // Keep the map small — only the most recent 200 documents matter.
+  const keys = Object.keys(fps);
+  keys.slice(0, Math.max(0, keys.length - 200)).forEach(k => delete fps[k]);
+  localStorage.setItem(SAVED_FP_KEY, JSON.stringify(fps));
+}
+
 function saveInvoiceRecord() {
   if (docType === 'letter' || !APPS_SCRIPT_URL) return;
+  const draftJson = JSON.stringify(getDraftData());
+  const key = recordKey(), fp = hashStr(draftJson);
+  if (getSavedFps()[key] === fp) return;    // identical document already recorded
   const rec = {
     id: Date.now(),
     createdAt: new Date().toISOString(),
@@ -2058,13 +2086,14 @@ function saveInvoiceRecord() {
     pol: getPort('pol') || gr('pol') || '',
     pod: getPort('pod') || gr('pod') || '',
     items: goodsRows.length,
-    draftJson: JSON.stringify(getDraftData()),
+    draftJson,
   };
   if (!rec.invNo && !rec.buyer) return;
+  markSaved(key, fp);                       // before the request, so a double-click can't insert twice
   fetch(APPS_SCRIPT_URL, {
     method: 'POST', mode: 'no-cors',
     body: JSON.stringify({action: 'insert', record: rec, token: APPS_SCRIPT_TOKEN}),
-  }).catch(e => console.warn('Record save failed:', e));
+  }).catch(e => { markSaved(key, undefined); console.warn('Record save failed:', e); });
 }
 
 function renderRecordsTable(recs) {
@@ -2133,6 +2162,8 @@ function loadRecordToForm(id) {
   if (!r.draftJson) { toast('This record predates reprint support — no saved form data to load','err'); return; }
   try {
     restoreDraft(JSON.parse(r.draftJson));
+    // It's already in the Sheet — reprinting it unchanged shouldn't add a row.
+    markSaved(recordKey(), hashStr(JSON.stringify(getDraftData())));
     closeRecords();
     go(0);
     toast('Loaded '+(r.invNo||'record')+' into the form','ok');

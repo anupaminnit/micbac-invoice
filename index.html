@@ -1489,14 +1489,15 @@ function buildQuotationHTML() {
   const polV       = esc(getPort("pol").toUpperCase());
   const podV       = esc(getPort("pod").toUpperCase());
   const notify     = esc(gr("notifyName").toUpperCase());
-  const nAddr      = esc(gr("notifyAddr").toUpperCase());
+  const nAddr      = escNl(gr("notifyAddr").toUpperCase());
   const nTax       = esc(gr("notifyTax").toUpperCase());
   const qtAttn     = esc(gr("qtAttn").toUpperCase());
+  const qtAgent    = esc(gr("qtAgent").trim().toUpperCase());
   const qtGrossWt  = esc(gr("qtGrossWt"));
   const qtNetWt    = esc(gr("qtNetWt"));
   const qtWtUnit   = qtUnit();
   const qtUnitFull = WT_UNITS[qtWtUnit];
-  const qtTolerance= esc(gr("qtTolerance") || "3%");
+  const qtTolerance= esc(gr("qtTolerance").trim());
   const qtPackaging= esc((gr("qtPackaging") || "").toUpperCase());
   const qtOFCarrier= esc((gr("qtOFCarrier") || "").toUpperCase());
   const qtOFRate   = esc(gr("qtOFRate"));
@@ -1542,6 +1543,7 @@ function buildQuotationHTML() {
     +(qtBuyerCountry?'<div class="vsub">'+qtBuyerCountry+'</div>':'')
     +(nTax?'<div class="vsub" style="margin-top:4px;"><span style="color:var(--mute);font-family:var(--mono);font-size:8px;">TAX CODE:</span> '+nTax+'</div>':'')
     +(qtAttn?'<div class="vsub" style="margin-top:4px;"><span style="color:var(--mute);font-family:var(--mono);font-size:8px;">KIND ATTN:</span> '+qtAttn+'</div>':'')
+    +(qtAgent?'<div class="vsub"><span style="color:var(--mute);font-family:var(--mono);font-size:8px;">AGENT:</span> '+qtAgent+'</div>':'')
     +'</div>'
     +'<div class="cell"><div class="k">EXPORTER</div>'
     +'<div class="vmain">MICBAC INDIA (OPC) PVT. LTD.</div>'
@@ -1633,9 +1635,11 @@ function buildHTMLDoc() {
   const polV     = esc(getPort("pol").toUpperCase());
   const podV     = esc(getPort("pod").toUpperCase());
   const consType = gr("consigneeType");
-  const consStr  = esc(consType==="order" ? "TO THE ORDER" : gr("consigneeName").toUpperCase());
+  // Named consignee: first line is the name, the rest its address.
+  const consLines = consType==="order" ? ["TO THE ORDER"]
+    : gr("consigneeName").toUpperCase().split("\n").map(l=>l.trim()).filter(Boolean).map(esc);
   const notify   = esc(gr("notifyName").toUpperCase());
-  const nAddr    = esc(gr("notifyAddr").toUpperCase());
+  const nAddr    = escNl(gr("notifyAddr").toUpperCase());
   const nTax     = esc(gr("notifyTax").toUpperCase());
   const grossWt  = esc(gr("grossWt"));
   const netWt    = esc(gr("netWt"));
@@ -1683,10 +1687,11 @@ function buildHTMLDoc() {
   const PARTIES='<div class="pgrid">'
     +'<div class="cell" style="border-right:1px solid var(--line);">'
     +'<div class="k">CONSIGNEE / BUYER'+(consType==='order'?' &mdash; TO THE ORDER':'')+'</div>'
-    +'<div class="vmain">'+consStr+'</div>'+(consType==='order'?'':'<div class="vsub">'+nAddr+'</div>')
-    +(nTax?'<div class="vsub" style="margin-top:4px;"><span style="color:var(--mute);font-family:var(--mono);font-size:8px;">TAX CODE:</span> '+nTax+'</div>':'')
+    +'<div class="vmain">'+(consLines[0]||'')+'</div>'
+    +(consLines.length>1?'<div class="vsub">'+consLines.slice(1).join('<br>')+'</div>':'')
     +'</div><div class="cell"><div class="k">NOTIFY PARTY</div>'
     +'<div class="vmain">'+notify+'</div><div class="vsub">'+nAddr+'</div>'
+    +(nTax?'<div class="vsub" style="margin-top:4px;"><span style="color:var(--mute);font-family:var(--mono);font-size:8px;">TAX CODE:</span> '+nTax+'</div>':'')
     +'</div></div>';
 
   const meta2=[['CONTRACT NO.',ctNo],['CONTRACT DATE',ctDate],['CONTAINER TYPE',ctType],['COUNTRY OF ORIGIN',coo],['PORT OF LOADING',polV],['PORT OF DESTINATION',podV],['INCO TERMS',inco],['PAYMENT TERMS',payT]];

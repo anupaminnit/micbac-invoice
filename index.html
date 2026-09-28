@@ -1823,7 +1823,7 @@ function showPreview(){
       if(!si){si=document.createElement('style');si.id='_micPreviewStyle';document.head.appendChild(si);}
       si.textContent=scoped;
       // Inject sheets only (skip toolbar — pane has its own)
-      const stageHTML=(doc2.getElementById('s0')?.outerHTML||'')+(doc2.getElementById('s1')?.outerHTML||'');
+      const stageHTML=[...doc2.querySelectorAll('.stage .sheet')].map(el=>el.outerHTML).join('');
       pane.innerHTML='<div class="mic-inv" style="display:contents">'+stageHTML+'</div>';
     }catch(e){console.error(e);toast("Preview error: "+e.message,"err");closePreview();}
   },80);

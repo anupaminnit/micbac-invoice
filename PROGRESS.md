@@ -13,5 +13,14 @@
 - Proforma shares the invoice numbering sequence (same `MIPLWB/NNN/FY` prefix). If proformas should not consume invoice numbers, give them their own prefix (e.g. `MIPLWB/PI/`) — the Sheet's `nextInvoiceNo` already handles any prefix.
 
 **Known issues / next**
-- `buildDoc` (jsPDF path) is dead code — nothing calls it. Candidate for removal.
 - `restoreDraft` passes `polLabel` into `selectPort` as the label, so reloaded drafts show the port as "INCCU — Kolkata Port, India" (code duplicated into the value). Pre-existing; not fixed here.
+
+## 2026-09-28 — Dead-code cleanup + bug audit
+
+**Done** (index.html 443 KB → 320 KB, no behaviour change; e2e checks pass)
+- Removed the unused jsPDF path: `buildDoc`, the jsPDF + autotable CDN scripts, and the `LOGO` base64 it alone used.
+- Removed the unused `LH_LOGO` base64; the nav bar now reuses `LTR_LOGO` (the two logos were byte-identical).
+- Removed the preview modal's dead iframe path (`previewFrame`, `_previewBlobUrl`, `if(false)` branch).
+- Removed reads of the non-existent `notifyCountry` field, the unused `.tp`/`.tr` CSS, unused id attributes, and duplicate guards in the CSV/Excel export.
+
+**Bug audit** — found, not yet fixed (see chat for full list): records-table XSS, port corrupted on draft reload, letter placeholder printed, amount-in-words broken ≥ 2,000,000, duplicate record per download, float qty totals, tolerance can't be cleared, qtAgent never printed, step-skip bypasses validation.

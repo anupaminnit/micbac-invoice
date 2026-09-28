@@ -1847,8 +1847,9 @@ function emailDraft(){
     " for "+total+".\n\nKindly review and confirm receipt.\n\n"+
     "Regards,\nMICBAC INDIA (OPC) PVT. LTD.\nEmail: MICBAC.INDIA@GMAIL.COM"
   );
-  window.open("https://mail.google.com/mail/?view=cm&fs=1&su="+sub+"&body="+body,"_blank","noopener");
-  makePDF();
+  // Browsers allow one popup per click, so Gmail can't open alongside the
+  // document window. Put the compose link in the document's toolbar instead.
+  makePDF("https://mail.google.com/mail/?view=cm&fs=1&su="+sub+"&body="+body);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2250,7 +2251,7 @@ function exportRecordsExcel() {
   toast('Excel exported!','ok');
 }
 
-function makePDF() {
+function makePDF(gmailUrl) {
   if (docType === 'letter') {
     if (!letterBodyHTML()) { toast("Write the letter content first","err"); return; }
     const ltrBtn = document.getElementById("ltrBtn");
@@ -2272,12 +2273,15 @@ function makePDF() {
       saveInvoiceRecord();
       const invNo=(document.getElementById("invNo")?.value||"").trim().toUpperCase();
       if(invNo) localStorage.setItem(lastNoKey(numberSeries()),invNo);
-      const html=docType==='quotation'?buildQuotationHTML():buildHTMLDoc();
+      let html=docType==='quotation'?buildQuotationHTML():buildHTMLDoc();
+        if(gmailUrl) html=html.replace('<div class="tb-actions">',
+          '<div class="tb-actions"><a class="tb-btn" href="'+esc(gmailUrl)+'" target="_blank" rel="noopener">\u2709 Open Gmail draft</a>');
         const blob=new Blob([html],{type:'text/html;charset=utf-8'});
         const url=URL.createObjectURL(blob);
         const win=window.open(url,'_blank');
         if(win) win.addEventListener('load',()=>setTimeout(()=>win.print(),900));
-        toast("Print window opening — choose Save as PDF","ok");
+        toast(gmailUrl?"Save the PDF, then click \u201cOpen Gmail draft\u201d in the document window to attach it"
+                      :"Print window opening — choose Save as PDF","ok");
         setTimeout(()=>URL.revokeObjectURL(url),30000);
     } catch(e) {
       console.error(e); toast("Error: "+e.message,"err");

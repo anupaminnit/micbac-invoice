@@ -513,7 +513,7 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
       <div class="cb">
         <div id="qtUnitRow" style="display:none;margin-bottom:14px;max-width:260px">
           <div class="f"><label>Weighing Unit</label>
-            <select id="qtWtUnit" onchange="changeQtWtUnit()">
+            <select id="qtWtUnit" onchange="updateUnitLabels()">
               <option value="MT">MT &mdash; Metric Tonnes</option>
               <option value="KGS">KGS &mdash; Kilograms</option>
               <option value="LBS">LBS &mdash; Pounds</option>
@@ -527,11 +527,11 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
               <th style="min-width:180px">Description</th>
               <th style="width:86px">HS Code</th>
               <th style="width:76px">Unit</th>
-              <th style="width:70px">Qty (<span class="thUnit">MT</span>)</th>
-              <th style="width:90px">Rate/<span class="thUnit">MT</span> (<span id="thCurr">USD</span>)</th>
+              <th style="width:70px">Qty (MT)</th>
+              <th style="width:90px">Rate/MT (<span id="thCurr">USD</span>)</th>
               <th style="width:90px">Amount (<span id="thCurr2">USD</span>)</th>
               <th style="width:76px">No. of Bags</th>
-              <th style="width:96px">Gross Wt (KGS)</th>
+              <th style="width:96px">Gross Wt (<span class="thUnit">KGS</span>)</th>
               <th style="width:32px"></th>
             </tr></thead>
             <tbody id="goodsBody"></tbody>
@@ -844,7 +844,7 @@ function updateTotals() {
 }
 
 function addGoodsRow() {
-  goodsRows.push({desc:"", hscode:"", unit:WT_UNITS[qtUnit()], qty:0, rate:0, bags:"", itemGrossWt:""});
+  goodsRows.push({desc:"", hscode:"", unit:"METRIC TONNES", qty:0, rate:0, bags:"", itemGrossWt:""});
   rebuildGoods();
 }
 
@@ -1182,11 +1182,9 @@ function switchDocType(type) {
     if (utr) utr.style.display = isQt ? '' : 'none';
     const itr = document.getElementById('invTypeRow');
     if (itr) itr.style.display = isInv ? '' : 'none';
-    relabelStockUnits();
     updateUnitLabels();
     updateInvTypeUI();
     autoInvoiceNumber();
-    if (step === 2) rebuildGoods();
     // Update progress step labels
     const steps = document.querySelectorAll('.stp');
     if (steps[3]) steps[3].textContent = isQt ? '\u2463 Quotation Details' : '\u2463 Packing & Generate';
@@ -1226,29 +1224,20 @@ function sealHTML(cls, style) {
 }
 
 // ── Quotation weighing unit ───────────────────────────────────────────────
-const WT_UNITS = {MT:'METRIC TONNES', KGS:'KILOGRAMS', LBS:'POUNDS'};
-// Invoices stay on MT; only quotations let the user pick the unit.
+// Applies to gross/net weights only — quantities and rates are always per MT.
+const WT_UNITS = ['MT', 'KGS', 'LBS'];
+// Invoice weights are always KGS; quotations use the selected weighing unit.
 function qtUnit() {
-  return docType === 'quotation' ? (document.getElementById('qtWtUnit')?.value || 'MT') : 'MT';
+  return docType === 'quotation' ? (document.getElementById('qtWtUnit')?.value || 'MT') : 'KGS';
 }
 // Older drafts stored this as free text ("kgs", "Tonnes"…) — map onto the dropdown.
 function normWtUnit(v) {
   const u = String(v || '').toUpperCase().replace(/[^A-Z]/g, '');
-  if (WT_UNITS[u]) return u;
+  if (WT_UNITS.includes(u)) return u;
   return u.startsWith('KG') ? 'KGS' : u.startsWith('LB') ? 'LBS' : 'MT';
 }
 function updateUnitLabels() {
   document.querySelectorAll('.thUnit').forEach(el => el.textContent = qtUnit());
-}
-// Re-label line items still on a stock unit name; custom units are left alone.
-function relabelStockUnits() {
-  const stock = Object.values(WT_UNITS);
-  goodsRows.forEach(r => { if (!r.unit || stock.includes(String(r.unit).toUpperCase())) r.unit = WT_UNITS[qtUnit()]; });
-}
-function changeQtWtUnit() {
-  relabelStockUnits();
-  updateUnitLabels();
-  rebuildGoods();
 }
 
 
@@ -1517,7 +1506,6 @@ function buildQuotationHTML() {
   const qtGrossWt  = esc(gr("qtGrossWt"));
   const qtNetWt    = esc(gr("qtNetWt"));
   const qtWtUnit   = qtUnit();
-  const qtUnitFull = WT_UNITS[qtWtUnit];
   const qtTolerance= esc(gr("qtTolerance").trim());
   const qtPackaging= esc((gr("qtPackaging") || "").toUpperCase());
   const qtOFCarrier= esc((gr("qtOFCarrier") || "").toUpperCase());
@@ -1533,7 +1521,7 @@ function buildQuotationHTML() {
 
   const items = goodsRows.map((r,i) => ({
     sr: i+1, desc: (r.desc||"").toUpperCase(), hs: esc((r.hscode||"").toUpperCase()),
-    unit: esc((r.unit||qtUnitFull).toUpperCase()),
+    unit: esc((r.unit||"METRIC TONNES").toUpperCase()),
     qty: num(r.qty), rate: num(r.rate),
     amount: num(r.qty)*num(r.rate),
   }));
@@ -1585,12 +1573,12 @@ function buildQuotationHTML() {
     +'<td><div class="desc-main">'+escNl(it.desc)+'</div>'+(it.hs?'<div class="desc-grade">HS: '+it.hs+'</div>':'')+'</td>'
     +'<td class="num r">'+it.hs+'</td><td>'+it.unit+'</td>'
     +'<td class="r">'+it.qty+'</td>'
-    +'<td class="r">'+curSym+' '+mn(it.rate)+'/'+qtWtUnit+'</td>'
+    +'<td class="r">'+curSym+' '+mn(it.rate)+'/MT</td>'
     +'<td class="r" style="font-weight:700;">'+curSym+' '+mn(it.amount)+'</td></tr>').join('');
   const QT_TABLE='<table class="items"><thead><tr>'
     +'<th style="width:26px;">SR</th><th>DESCRIPTION</th><th class="r" style="width:70px;">HS CODE</th>'
     +'<th style="width:78px;">UNIT</th><th class="r" style="width:42px;">QTY</th>'
-    +'<th class="r" style="width:84px;">RATE/'+qtWtUnit+'</th><th class="r" style="width:90px;">AMOUNT</th>'
+    +'<th class="r" style="width:84px;">RATE/MT</th><th class="r" style="width:90px;">AMOUNT</th>'
     +'</tr></thead><tbody>'+iRows+'</tbody></table>'
     +'<div class="strip">'
     +'<span><span class="k">QTY TOTAL</span><span class="v">'+qtyTotalText(items)+'</span></span>'

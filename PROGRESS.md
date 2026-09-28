@@ -9,7 +9,7 @@
 - Fixed preview modal appending the literal text "undefined" when there is no packing-list sheet (quotation, proforma).
 
 **Decisions**
-- Invoices stay hard-wired to MT; unit choice is quotation-only, as requested. Switching doc type relabels rows that use a stock unit name (METRIC TONNES / KILOGRAMS / POUNDS); custom units are untouched.
+- (Revised per user) The quotation weighing unit applies to weights only: goods-table Gross Wt header, Quotation Details gross/net weight, and those weights in the PDF. Qty is always MT and rate always RATE/MT; row units are never relabelled. Invoice weights stay KGS.
 - Proforma shares the invoice numbering sequence (same `MIPLWB/NNN/FY` prefix). If proformas should not consume invoice numbers, give them their own prefix (e.g. `MIPLWB/PI/`) — the Sheet's `nextInvoiceNo` already handles any prefix.
 
 

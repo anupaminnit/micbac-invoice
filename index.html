@@ -275,6 +275,10 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
 .dt-btn{padding:9px 22px;border-radius:40px;border:none;font-family:"Inter Tight",sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;color:var(--muted);background:none}
 .dt-btn.active{background:var(--org);color:var(--blk);box-shadow:0 2px 12px rgba(155,193,26,.4)}
 .dt-btn:not(.active):hover{background:var(--lorg);color:var(--blk)}
+.doc-opts{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:22px}
+.doc-opts .doc-type-bar{margin-bottom:0}
+.seal-tgl{display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:50px;box-shadow:var(--sh);padding:9px 18px;font-size:.8rem;font-weight:600;cursor:pointer;user-select:none}
+.seal-tgl input{width:16px;height:16px;accent-color:var(--dorg);cursor:pointer}
 /* ── RICH TEXT EDITOR ── */
 .rte-wrap{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#fff}
 .rte-tb{display:flex;align-items:center;gap:3px;padding:5px 8px;background:#f8f8f5;border-bottom:1px solid var(--border);flex-wrap:wrap}
@@ -309,10 +313,15 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
 <div class="nav-accent"></div>
 
 <div class="wrap">
-  <div class="doc-type-bar">
-    <button class="dt-btn active" id="dt-invoice" onclick="switchDocType('invoice')">&#128196; Commercial Invoice</button>
-    <button class="dt-btn" id="dt-quotation" onclick="switchDocType('quotation')">&#128203; Quotation</button>
-    <button class="dt-btn" id="dt-letter" onclick="switchDocType('letter')">&#9993; Official Letter</button>
+  <div class="doc-opts">
+    <div class="doc-type-bar">
+      <button class="dt-btn active" id="dt-invoice" onclick="switchDocType('invoice')">&#128196; Invoice</button>
+      <button class="dt-btn" id="dt-quotation" onclick="switchDocType('quotation')">&#128203; Quotation</button>
+      <button class="dt-btn" id="dt-letter" onclick="switchDocType('letter')">&#9993; Official Letter</button>
+    </div>
+    <label class="seal-tgl" title="Untick to print a blank signature area for a manual stamp &amp; signature">
+      <input type="checkbox" id="withSeal" checked/> Include seal &amp; signature
+    </label>
   </div>
   <div class="prog">
     <div class="stp on" onclick="go(0)">① Invoice Details</div>
@@ -331,6 +340,14 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
       <div class="ch"><div class="ci">🧾</div><h2>Invoice &amp; Contract Details</h2></div>
       <div class="ch-accent"></div>
       <div class="cb">
+        <div id="invTypeRow" style="margin-bottom:14px;max-width:260px">
+          <div class="f"><label>Invoice Type</label>
+            <select id="invType" onchange="updateInvTypeUI()">
+              <option value="commercial">Commercial Invoice</option>
+              <option value="proforma">Proforma Invoice</option>
+            </select>
+          </div>
+        </div>
         <div class="g4">
           <div class="f"><label>Invoice Number <span>*</span></label><input class="mono" id="invNo" placeholder="MIPLWB/067/25-26"/></div>
           <div class="f"><label>Invoice Date <span>*</span></label><input type="date" id="invDate"/></div>
@@ -504,6 +521,15 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
       <div class="ch"><div class="ci">📦</div><h2>Goods / Line Items</h2></div>
       <div class="ch-accent"></div>
       <div class="cb">
+        <div id="qtUnitRow" style="display:none;margin-bottom:14px;max-width:260px">
+          <div class="f"><label>Weighing Unit</label>
+            <select id="qtWtUnit" onchange="changeQtWtUnit()">
+              <option value="MT">MT &mdash; Metric Tonnes</option>
+              <option value="KGS">KGS &mdash; Kilograms</option>
+              <option value="LBS">LBS &mdash; Pounds</option>
+            </select>
+          </div>
+        </div>
         <div style="overflow-x:auto">
           <table class="gt">
             <thead><tr>
@@ -511,8 +537,8 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
               <th style="min-width:180px">Description</th>
               <th style="width:86px">HS Code</th>
               <th style="width:76px">Unit</th>
-              <th style="width:70px">Qty (MT)</th>
-              <th style="width:90px">Rate/Unit (<span id="thCurr">USD</span>)</th>
+              <th style="width:70px">Qty (<span class="thUnit">MT</span>)</th>
+              <th style="width:90px">Rate/<span class="thUnit">MT</span> (<span id="thCurr">USD</span>)</th>
               <th style="width:90px">Amount (<span id="thCurr2">USD</span>)</th>
               <th style="width:76px">No. of Bags</th>
               <th style="width:96px">Gross Wt (KGS)</th>
@@ -559,9 +585,9 @@ nav{background:var(--blk);padding:0 36px;display:flex;align-items:center;justify
       <div class="ch-accent"></div>
       <div class="cb">
         <div class="g4" style="margin-bottom:10px">
-          <div class="f"><label>Gross Weight</label><input class="mono" id="qtGrossWt" type="text" placeholder="e.g. 28.200"/></div>
-          <div class="f"><label>Net Weight</label><input class="mono" id="qtNetWt" type="text" placeholder="e.g. 28.000"/></div>
-          <div class="f"><label>Weight Unit</label><input id="qtWtUnit" value="MT" placeholder="e.g. MT, KGS, LBS"/></div>
+          <div class="f"><label>Gross Weight (<span class="thUnit">MT</span>)</label><input class="mono" id="qtGrossWt" type="text" placeholder="e.g. 28.200"/></div>
+          <div class="f"><label>Net Weight (<span class="thUnit">MT</span>)</label><input class="mono" id="qtNetWt" type="text" placeholder="e.g. 28.000"/></div>
+          <div class="f" style="opacity:0"></div>
           <div class="f" style="opacity:0"></div>
         </div>
         <div class="g4">
@@ -822,7 +848,7 @@ function updateTotals() {
 }
 
 function addGoodsRow() {
-  goodsRows.push({desc:"", hscode:"", unit:"METRIC TONNES", qty:0, rate:0, bags:"", itemGrossWt:""});
+  goodsRows.push({desc:"", hscode:"", unit:WT_UNITS[qtUnit()], qty:0, rate:0, bags:"", itemGrossWt:""});
   rebuildGoods();
 }
 
@@ -1131,11 +1157,14 @@ function switchDocType(type) {
     // Show/hide packing card (invoice only)
     const pc = document.getElementById('packingCard');
     if (pc) pc.style.display = isQt ? 'none' : '';
-    // Update generate button
-    const btn = document.getElementById('genBtn');
-    if (btn) btn.textContent = isQt
-      ? '\u2913 Download Quotation (PDF)'
-      : '\u2913 Download Commercial Invoice + Packing List (PDF)';
+    const utr = document.getElementById('qtUnitRow');
+    if (utr) utr.style.display = isQt ? '' : 'none';
+    const itr = document.getElementById('invTypeRow');
+    if (itr) itr.style.display = isInv ? '' : 'none';
+    relabelStockUnits();
+    updateUnitLabels();
+    updateInvTypeUI();
+    if (step === 2) rebuildGoods();
     // Update progress step labels
     const steps = document.querySelectorAll('.stp');
     if (steps[3]) steps[3].textContent = isQt ? '\u2463 Quotation Details' : '\u2463 Packing & Generate';
@@ -1143,6 +1172,61 @@ function switchDocType(type) {
     const s1h = document.querySelector('#s1 .ch h2');
     if (s1h) s1h.textContent = isQt ? 'Bill To & Ports' : 'Consignee, Notify Party & Ports';
   }
+}
+
+// ── Invoice type (commercial | proforma) ──────────────────────────────────
+function isProforma() {
+  return docType === 'invoice' && document.getElementById('invType')?.value === 'proforma';
+}
+function docLabel() {
+  return docType === 'quotation' ? 'Quotation' : isProforma() ? 'Proforma Invoice' : 'Commercial Invoice';
+}
+// Proforma is issued before shipment, so it prints without a packing list.
+function genBtnLabel() {
+  if (docType === 'quotation') return '⤓ Download Quotation (PDF)';
+  return isProforma() ? '⤓ Download Proforma Invoice (PDF)'
+                      : '⤓ Download Commercial Invoice + Packing List (PDF)';
+}
+function updateInvTypeUI() {
+  const btn = document.getElementById('genBtn');
+  if (btn) btn.textContent = genBtnLabel();
+}
+
+// ── Seal & signature toggle (invoice, quotation, letter) ──────────────────
+function withSeal() { return document.getElementById('withSeal')?.checked !== false; }
+// Stamp+signature image, or an equally sized blank box (same aspect ratio as
+// SIG) so the layout doesn't shift and the copy can be stamped/signed by hand.
+function sealHTML(cls, style) {
+  const c = cls ? ' class="'+cls+'"' : '';
+  return withSeal()
+    ? '<img'+c+' src="data:image/jpeg;base64,'+SIG+'" style="'+style+'" alt=""/>'
+    : '<div'+c+' style="'+style+';aspect-ratio:2000/1414"></div>';
+}
+
+// ── Quotation weighing unit ───────────────────────────────────────────────
+const WT_UNITS = {MT:'METRIC TONNES', KGS:'KILOGRAMS', LBS:'POUNDS'};
+// Invoices stay on MT; only quotations let the user pick the unit.
+function qtUnit() {
+  return docType === 'quotation' ? (document.getElementById('qtWtUnit')?.value || 'MT') : 'MT';
+}
+// Older drafts stored this as free text ("kgs", "Tonnes"…) — map onto the dropdown.
+function normWtUnit(v) {
+  const u = String(v || '').toUpperCase().replace(/[^A-Z]/g, '');
+  if (WT_UNITS[u]) return u;
+  return u.startsWith('KG') ? 'KGS' : u.startsWith('LB') ? 'LBS' : 'MT';
+}
+function updateUnitLabels() {
+  document.querySelectorAll('.thUnit').forEach(el => el.textContent = qtUnit());
+}
+// Re-label line items still on a stock unit name; custom units are left alone.
+function relabelStockUnits() {
+  const stock = Object.values(WT_UNITS);
+  goodsRows.forEach(r => { if (!r.unit || stock.includes(String(r.unit).toUpperCase())) r.unit = WT_UNITS[qtUnit()]; });
+}
+function changeQtWtUnit() {
+  relabelStockUnits();
+  updateUnitLabels();
+  rebuildGoods();
 }
 
 
@@ -1240,6 +1324,7 @@ function getDraftData() {
     qtPONo:v("qtPONo"),qtOFCarrier:v("qtOFCarrier"),qtOFRate:v("qtOFRate"),qtOFTransit:v("qtOFTransit"),
     polManual:v("polManual"),podManual:v("podManual"),
     qtGrossWt:v("qtGrossWt"),qtNetWt:v("qtNetWt"),qtWtUnit:v("qtWtUnit"),
+    invType:v("invType"),withSeal:withSeal(),
   };
 }
 function restoreDraft(d) {
@@ -1257,13 +1342,17 @@ function restoreDraft(d) {
   if (d.pod) selectPort("pod",d.pod,d.podLabel||d.pod);
   set("polManual",d.polManual);set("podManual",d.podManual);
   if (d.goodsRows) goodsRows=d.goodsRows;
+  set("invType",d.invType||"commercial");
+  if (d.withSeal!=null) document.getElementById("withSeal").checked=!!d.withSeal;
+  if (d.qtWtUnit!=null) set("qtWtUnit",normWtUnit(d.qtWtUnit));
   updateBankPreview();updateCurrency();
   if(d.docType) switchDocType(d.docType);
   const qv=(id,v)=>{const e=document.getElementById(id);if(e&&v!=null)e.value=v;};
   qv("qtBuyerCountry",d.qtBuyerCountry);qv("qtAttn",d.qtAttn);qv("qtAgent",d.qtAgent);
   qv("qtTolerance",d.qtTolerance);qv("qtPackaging",d.qtPackaging);
   qv("qtPONo",d.qtPONo);qv("qtOFCarrier",d.qtOFCarrier);qv("qtOFRate",d.qtOFRate);qv("qtOFTransit",d.qtOFTransit);
-  qv("qtGrossWt",d.qtGrossWt);qv("qtNetWt",d.qtNetWt);qv("qtWtUnit",d.qtWtUnit);
+  qv("qtGrossWt",d.qtGrossWt);qv("qtNetWt",d.qtNetWt);
+  updateUnitLabels();updateInvTypeUI();
 }
 function saveDraft() {
   localStorage.setItem("micbac_draft",JSON.stringify(getDraftData()));
@@ -1383,7 +1472,8 @@ function buildQuotationHTML() {
   const qtAttn     = gr("qtAttn").toUpperCase();
   const qtGrossWt  = gr("qtGrossWt");
   const qtNetWt    = gr("qtNetWt");
-  const qtWtUnit   = (gr("qtWtUnit") || "KGS").toUpperCase();
+  const qtWtUnit   = qtUnit();
+  const qtUnitFull = WT_UNITS[qtWtUnit];
   const qtTolerance= gr("qtTolerance") || "3%";
   const qtPackaging= (gr("qtPackaging") || "").toUpperCase();
   const qtOFCarrier= (gr("qtOFCarrier") || "").toUpperCase();
@@ -1399,7 +1489,7 @@ function buildQuotationHTML() {
 
   const items = goodsRows.map((r,i) => ({
     sr: i+1, desc: (r.desc||"").toUpperCase(), hs: (r.hscode||"").toUpperCase(),
-    unit: (r.unit||"METRIC TONNES").toUpperCase(),
+    unit: (r.unit||qtUnitFull).toUpperCase(),
     qty: num(r.qty), rate: num(r.rate),
     amount: num(r.qty)*num(r.rate),
   }));
@@ -1451,15 +1541,15 @@ function buildQuotationHTML() {
     +'<td><div class="desc-main">'+escNl(it.desc)+'</div>'+(it.hs?'<div class="desc-grade">HS: '+it.hs+'</div>':'')+'</td>'
     +'<td class="num r">'+it.hs+'</td><td>'+it.unit+'</td>'
     +'<td class="r">'+it.qty+'</td>'
-    +'<td class="r">'+curSym+' '+mn(it.rate)+'/MT</td>'
+    +'<td class="r">'+curSym+' '+mn(it.rate)+'/'+qtWtUnit+'</td>'
     +'<td class="r" style="font-weight:700;">'+curSym+' '+mn(it.amount)+'</td></tr>').join('');
   const QT_TABLE='<table class="items"><thead><tr>'
     +'<th style="width:26px;">SR</th><th>DESCRIPTION</th><th class="r" style="width:70px;">HS CODE</th>'
     +'<th style="width:78px;">UNIT</th><th class="r" style="width:42px;">QTY</th>'
-    +'<th class="r" style="width:84px;">RATE/MT</th><th class="r" style="width:90px;">AMOUNT</th>'
+    +'<th class="r" style="width:84px;">RATE/'+qtWtUnit+'</th><th class="r" style="width:90px;">AMOUNT</th>'
     +'</tr></thead><tbody>'+iRows+'</tbody></table>'
     +'<div class="strip">'
-    +'<span><span class="k">QTY TOTAL</span><span class="v">'+totalQty+' METRIC TONNES</span></span>'
+    +'<span><span class="k">QTY TOTAL</span><span class="v">'+totalQty+' '+qtUnitFull+'</span></span>'
     +(gst.type==='igst18'
       ? '<span><span class="k">SUB TOTAL</span><span class="v">'+curSym+' '+mn(total)+'</span></span>'
         +'<span><span class="k">IGST @ 18%</span><span class="v">'+curSym+' '+mn(gst.igst)+'</span></span>'
@@ -1488,7 +1578,7 @@ function buildQuotationHTML() {
 
   const SIGN='<div class="sign"><div class="words"></div>'
     +'<div class="sigbox"><div class="forco">FOR MICBAC INDIA (OPC) PVT. LTD.</div>'
-    +'<img src="data:image/jpeg;base64,'+SIG+'" style="max-width:160px;height:auto;display:block;margin:4px 0 4px auto;" />'
+    +sealHTML('','max-width:160px;height:auto;display:block;margin:4px 0 4px auto')
     +'<div class="sigline"><div class="role">AUTHORISED SIGNATORY</div></div></div></div>';
 
   const TERMS='<div class="terms"><h4>Terms &amp; Conditions</h4><ul>'
@@ -1539,6 +1629,7 @@ function buildHTMLDoc() {
   const gst      = computeGST();
   const total    = gst.sub;
   const netTotal = gst.net;
+  const proforma = isProforma();
   const bankKey  = document.getElementById("bankAccount")?.value || "currency_cloud";
   const bankRows = (BANKS[bankKey] || BANKS.currency_cloud).rows;
   const items    = goodsRows.map((r,i)=>({
@@ -1658,7 +1749,7 @@ function buildHTMLDoc() {
     return '<div class="sign"><div class="words">'
       +(showW?'<span style="font-family:var(--mono);font-size:7px;letter-spacing:.14em;color:var(--mute);text-transform:uppercase;">Amount in words&nbsp;&nbsp;</span><span class="amt">'+amtWords(netTotal)+'</span>':'')
       +'</div><div class="sigbox"><div class="forco">FOR MICBAC INDIA (OPC) PVT. LTD.</div>'
-      +'<img src="data:image/jpeg;base64,'+SIG+'" style="max-width:160px;height:auto;display:block;margin:4px 0 4px auto;" />'
+      +sealHTML('','max-width:160px;height:auto;display:block;margin:4px 0 4px auto')
       +'<div class="sigline"><div class="role">AUTHORISED SIGNATORY</div></div></div></div>';
   }
   const TERMS='<div class="terms"><h4>Terms &amp; Conditions</h4><ul>'
@@ -1667,19 +1758,19 @@ function buildHTMLDoc() {
     +'<li>MICBAC INDIA (OPC) PVT. LTD. IS REGISTERED UNDER THE MSMED ACT, 2006.</li>'
     +'<li>ALL DISPUTES SUBJECT TO KOLKATA JURISDICTION. E &amp; O.E</li></ul></div>';
   const FOOT='<div class="foot"><span>WWW.MICBACINDIA.COM &nbsp;|&nbsp; MICBAC.INDIA@GMAIL.COM</span>'
-    +'<span class="doc-orig">** COMPUTER-GENERATED INVOICE ** | ORIGINAL FOR RECIPIENT</span></div>';
+    +'<span class="doc-orig">'+(proforma?'** COMPUTER-GENERATED PROFORMA INVOICE **':'** COMPUTER-GENERATED INVOICE ** | ORIGINAL FOR RECIPIENT')+'</span></div>';
 
-  const S_INV ='<div class="sheet">'+MAST+tb('COMMERCIAL INVOICE')+PARTIES+SHIP+INV_TABLE+PAY_SUM+sign(true)+TERMS+FOOT+'</div>';
+  const S_INV ='<div class="sheet">'+MAST+tb(proforma?'PROFORMA INVOICE':'COMMERCIAL INVOICE')+PARTIES+SHIP+INV_TABLE+PAY_SUM+sign(true)+TERMS+FOOT+'</div>';
   const S_PACK='<div class="sheet">'+MAST+tb('PACKING LIST')+PARTIES+SHIP+PACK_TABLE+WEIGHTS+sign(false)+TERMS+FOOT+'</div>';
 
   return '<!doctype html><html lang="en"><head><meta charset="utf-8"/><title>MICBAC India — '+inv+'</title>'
     +'<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>'
     +'<style>'+_MIC_CSS+'</style></head><body>'
     +'<div class="toolbar"><div class="tb-brand"><span class="nm">MICBAC INDIA</span><span class="sub">Precision × Carbon</span></div>'
-    +'<div class="tb-actions"><button class="tb-btn" id="tBtn" onclick="td()">Show Packing List</button>'
+    +'<div class="tb-actions">'+(proforma?'':'<button class="tb-btn" id="tBtn" onclick="td()">Show Packing List</button>')
     +'<button class="tb-btn primary" onclick="window.print()">Print / Save PDF</button></div></div>'
-    +'<div class="stage"><div id="s0">'+S_INV+'</div><div id="s1" style="display:none">'+S_PACK+'</div></div>'
-    +'<script>var sh="invoice";function td(){sh=sh==="invoice"?"packing":"invoice";document.getElementById("s0").style.display=sh==="invoice"?"":"none";document.getElementById("s1").style.display=sh==="packing"?"":"none";document.getElementById("tBtn").textContent=sh==="invoice"?"Show Packing List":"Show Invoice";}window.addEventListener("beforeprint",function(){document.getElementById("s0").style.display="";document.getElementById("s1").style.display="";});window.addEventListener("afterprint",function(){document.getElementById("s0").style.display=sh==="invoice"?"":"none";document.getElementById("s1").style.display=sh==="packing"?"":"none";});<\/script>'
+    +'<div class="stage"><div id="s0">'+S_INV+'</div>'+(proforma?'':'<div id="s1" style="display:none">'+S_PACK+'</div>')+'</div>'
+    +(proforma?'':'<script>var sh="invoice";function td(){sh=sh==="invoice"?"packing":"invoice";document.getElementById("s0").style.display=sh==="invoice"?"":"none";document.getElementById("s1").style.display=sh==="packing"?"":"none";document.getElementById("tBtn").textContent=sh==="invoice"?"Show Packing List":"Show Invoice";}window.addEventListener("beforeprint",function(){document.getElementById("s0").style.display="";document.getElementById("s1").style.display="";});window.addEventListener("afterprint",function(){document.getElementById("s0").style.display=sh==="invoice"?"":"none";document.getElementById("s1").style.display=sh==="packing"?"":"none";});<\/script>')
     +'</body></html>';
 }
 
@@ -1719,7 +1810,7 @@ function showPreview(){
         if(!si){si=document.createElement('style');si.id='_micPreviewStyle';document.head.appendChild(si);}
         si.textContent=scoped;
         // Inject sheets only (skip toolbar — pane has its own)
-        const stageHTML=doc2.getElementById('s0')?.outerHTML+doc2.getElementById('s1')?.outerHTML;
+        const stageHTML=(doc2.getElementById('s0')?.outerHTML||'')+(doc2.getElementById('s1')?.outerHTML||'');
         pane.innerHTML='<div class="mic-inv" style="display:contents">'+stageHTML+'</div>';
       }
     }catch(e){console.error(e);toast("Preview error: "+e.message,"err");closePreview();}
@@ -1741,9 +1832,9 @@ function emailDraft(){
   const invNo=document.getElementById("invNo")?.value||"INVOICE";
   const notify=document.getElementById("notifyName")?.value||"";
   const total=getCurrSymbol()+fmt(computeGST().net);
-  const sub=encodeURIComponent("Commercial Invoice — "+invNo);
+  const sub=encodeURIComponent(docLabel()+" — "+invNo);
   const body=encodeURIComponent(
-    "Dear "+notify+",\n\nPlease find attached the commercial invoice "+invNo+
+    "Dear "+notify+",\n\nPlease find attached the "+docLabel().toLowerCase()+" "+invNo+
     " for "+total+".\n\nKindly review and confirm receipt.\n\n"+
     "Regards,\nMICBAC INDIA (OPC) PVT. LTD.\nEmail: MICBAC.INDIA@GMAIL.COM"
   );
@@ -2184,7 +2275,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;f
 </div>
 <div class="sig">
   <div class="closing">Yours faithfully,</div>
-  <img class="seal" src="data:image/jpeg;base64,${SIG}" alt="">
+  ${sealHTML('seal','')}
   <div class="sigline"></div>
   <div class="sigco">For MICBAC INDIA (OPC) PVT. LTD.</div>
   <div class="signame">Nilesh Gupta</div>
@@ -2278,7 +2369,7 @@ function saveInvoiceRecord() {
   const rec = {
     id: Date.now(),
     createdAt: new Date().toISOString(),
-    docType,
+    docType: isProforma() ? 'proforma' : docType,
     invNo: (document.getElementById('invNo')?.value || '').trim(),
     invDate: gr('invDate') ? fd(gr('invDate')) : '',
     buyer: (gr('notifyName') || gr('qtAttn') || '').trim(),
@@ -2454,14 +2545,13 @@ function makePDF() {
         const url=URL.createObjectURL(blob);
         const win=window.open(url,'_blank');
         if(win) win.addEventListener('load',()=>setTimeout(()=>win.print(),900));
-        const label=docType==='quotation'?"Quotation":"Invoice + Packing List";
         toast("Print window opening — choose Save as PDF","ok");
         setTimeout(()=>URL.revokeObjectURL(url),30000);
     } catch(e) {
       console.error(e); toast("Error: "+e.message,"err");
     } finally {
       btn.disabled=false;
-      btn.textContent=docType==='quotation'?"⬇ Download Quotation (PDF)":"⬇ Download Commercial Invoice + Packing List (PDF)";
+      btn.textContent=genBtnLabel();
     }
   }, 100);
 }

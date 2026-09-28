@@ -1838,6 +1838,15 @@ document.getElementById('navLogo').src = 'data:image/png;base64,' + LTR_LOGO;
 // ═══════════════════════════════════════════════════════════════════════
 // OFFICIAL LETTER PDF
 // ═══════════════════════════════════════════════════════════════════════
+// Letter body from the contenteditable, minus the grey placeholder the editor
+// shows while empty; '' when nothing has been written.
+function letterBodyHTML() {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = document.getElementById("ltrBody")?.innerHTML || '';
+  tmp.querySelectorAll('.rte-ph').forEach(el => el.remove());
+  return tmp.textContent.trim() ? tmp.innerHTML.trim() : '';
+}
+
 function buildLetterHTML() {
   const v = id => document.getElementById(id)?.value || "";
   const ref     = v("ltrRef") || "MIPLWB/LTR/001/25-26";
@@ -1846,15 +1855,7 @@ function buildLetterHTML() {
                           : new Date().toLocaleDateString("en-IN");
   const toText  = v("ltrTo");
   const subject = v("ltrSubject");
-  // body: read from contenteditable innerHTML; strip placeholder span
-  const bodyEl  = document.getElementById("ltrBody");
-  let rawHTML = bodyEl ? bodyEl.innerHTML : '';
-  // remove placeholder span (gray text shown when empty)
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = rawHTML;
-  const phSpan = tempDiv.querySelector('span[style*="rgb(156, 163, 175)"]');
-  if (phSpan) phSpan.remove();
-  const bodyHTML = tempDiv.innerHTML.trim();
+  const bodyHTML = letterBodyHTML();
 
   let toHTML = '';
   if (toText.trim()) {
@@ -2019,12 +2020,11 @@ function rteColor(c) {
   const ph = (el.dataset.ph || '').replace(/\\n/g, '\n');
   function showPh() {
     if (!el.textContent.trim()) {
-      el.innerHTML = '<span style="color:#9ca3af;pointer-events:none;white-space:pre-wrap">' + ph + '</span>';
+      el.innerHTML = '<span class="rte-ph" style="color:#9ca3af;pointer-events:none;white-space:pre-wrap">' + ph + '</span>';
     }
   }
   function clearPh() {
-    const first = el.firstElementChild;
-    if (first && first.style.color === 'rgb(156, 163, 175)') el.innerHTML = '';
+    if (el.querySelector('.rte-ph')) el.innerHTML = '';
   }
   showPh();
   el.addEventListener('focus', clearPh);
@@ -2199,6 +2199,7 @@ function exportRecordsExcel() {
 
 function makePDF() {
   if (docType === 'letter') {
+    if (!letterBodyHTML()) { toast("Write the letter content first","err"); return; }
     const ltrBtn = document.getElementById("ltrBtn");
     if (ltrBtn) { ltrBtn.disabled=true; ltrBtn.textContent="⏳ Opening letter..."; }
     try {
@@ -2208,7 +2209,7 @@ function makePDF() {
       window.open(url, '_blank');
       toast("Letter opened — use Ctrl+P / ⌘P to save as PDF","ok");
     } catch(e) { console.error(e); toast("Error: "+e.message,"err"); }
-    finally { if(ltrBtn){ltrBtn.disabled=false;ltrBtn.textContent="⬇ Open Letter (Print to PDF)";} }
+    finally { if(ltrBtn){ltrBtn.disabled=false;ltrBtn.textContent="⇓ Download Letter PDF";} }
     return;
   }
   const btn = document.getElementById("genBtn");

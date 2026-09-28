@@ -763,7 +763,14 @@ const gr  = id => document.getElementById(id)?.value || "";
 const fmt = n  => Number(n).toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2});
 
 function go(n) {
-  if (n > step && !chk(step)) return;
+  // Jumping ahead via the progress bar must not skip required fields on the
+  // steps in between: stop at the first incomplete step and show it.
+  for (let i = step; i < n; i++) {
+    if (!chk(i, true)) { showStep(i); chk(i); return; }
+  }
+  showStep(n);
+}
+function showStep(n) {
   document.getElementById("s"+step).style.display = "none";
   step = n;
   document.getElementById("s"+step).style.display = "";
@@ -773,16 +780,16 @@ function go(n) {
   window.scrollTo({top:0, behavior:"smooth"});
 }
 
-function chk(n) {
+function chk(n, silent) {
   const req = { 0:["invNo","invDate"], 1:["notifyName"], 2:[] };
   for (const id of (req[n]||[])) {
     const el = document.getElementById(id);
-    if (!el?.value?.trim()) { toast("Fill all required fields","err"); el?.focus(); return false; }
+    if (!el?.value?.trim()) { if (!silent) { toast("Fill all required fields","err"); el?.focus(); } return false; }
   }
   if (n===1) {
     const podVal = (document.getElementById("pod")?.value||"").trim() ||
                    (document.getElementById("podManual")?.value||"").trim();
-    if (!podVal) { toast("Select or type a Port of Destination","err"); return false; }
+    if (!podVal) { if (!silent) toast("Select or type a Port of Destination","err"); return false; }
   }
   return true;
 }

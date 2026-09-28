@@ -6,6 +6,7 @@
 <title>MICBAC India — Invoice Generator</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="js/amount-words.js"></script>
 <style>
 :root{
   --org:#C8F23A;--lorg:#EEF6CE;--morg:#C2CE9B;--dorg:#5E7A0A;
@@ -1651,16 +1652,6 @@ function buildHTMLDoc() {
   const totalBags = items.reduce((a,it)=>a+it.bags,0);
 
   function mn(n){return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
-  function amtWords(n){
-    const o=['','ONE','TWO','THREE','FOUR','FIVE','SIX','SEVEN','EIGHT','NINE','TEN','ELEVEN','TWELVE','THIRTEEN','FOURTEEN','FIFTEEN','SIXTEEN','SEVENTEEN','EIGHTEEN','NINETEEN'];
-    const t=['','','TWENTY','THIRTY','FORTY','FIFTY','SIXTY','SEVENTY','EIGHTY','NINETY'];
-    function u(x){let s='';if(x>=100){s+=o[Math.floor(x/100)]+' HUNDRED ';x%=100;}if(x>=20){s+=t[Math.floor(x/10)]+(x%10?'-'+o[x%10]:'')+' ';}else if(x>0){s+=o[x]+' ';}return s.trim();}
-    function sp(x){if(!x)return 'ZERO';let s='';const th=Math.floor(x/1000);if(th>0)s+=u(th)+' THOUSAND ';s+=u(x%1000);return s.trim();}
-    const i=Math.floor(n),c=Math.round((n-i)*100);
-    const unit=curr==='EUR'?'EUROS':curr==='GBP'?'POUNDS STERLING':curr==='SGD'?'SINGAPORE DOLLARS':curr==='AED'?'UAE DIRHAMS':curr==='INR'?'INDIAN RUPEES':'US DOLLARS';
-    const frac=curr==='INR'?'PAISE':'CENTS';
-    return unit+' '+sp(i)+(c?' AND '+sp(c)+' '+frac:' ONLY');
-  }
 
   // Dot-pore mark SVG (self-contained, no external deps)
   const MARK=_MARK_SVG;
@@ -1755,7 +1746,7 @@ function buildHTMLDoc() {
 
   function sign(showW){
     return '<div class="sign"><div class="words">'
-      +(showW?'<span style="font-family:var(--mono);font-size:7px;letter-spacing:.14em;color:var(--mute);text-transform:uppercase;">Amount in words&nbsp;&nbsp;</span><span class="amt">'+amtWords(netTotal)+'</span>':'')
+      +(showW?'<span style="font-family:var(--mono);font-size:7px;letter-spacing:.14em;color:var(--mute);text-transform:uppercase;">Amount in words&nbsp;&nbsp;</span><span class="amt">'+amountInWords(netTotal,curr)+'</span>':'')
       +'</div><div class="sigbox"><div class="forco">FOR MICBAC INDIA (OPC) PVT. LTD.</div>'
       +sealHTML('','max-width:160px;height:auto;display:block;margin:4px 0 4px auto')
       +'<div class="sigline"><div class="role">AUTHORISED SIGNATORY</div></div></div></div>';

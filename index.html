@@ -1336,9 +1336,16 @@ function autoInvoiceNumber(force) {
 // ═══════════════════════════════════════════════════════════════════════
 // DRAFT — SAVE / LOAD / CLONE
 // ═══════════════════════════════════════════════════════════════════════
-function getDraftData() {
+// withLetter=false for Sheet records: those track invoices/quotations, and
+// shouldn't carry (or on load, overwrite) whatever letter is in progress.
+function getDraftData(withLetter=true) {
   const v=id=>document.getElementById(id)?.value||"";
+  const letter = withLetter ? {
+    ltrRef:v("ltrRef"),ltrDate:v("ltrDate"),ltrTo:v("ltrTo"),ltrSubject:v("ltrSubject"),
+    ltrBody:letterBodyHTML(),
+  } : {};
   return {
+    ...letter,
     invNo:v("invNo"),invDate:v("invDate"),ctNo:v("ctNo"),ctDate:v("ctDate"),
     ctType:v("ctType"),inco:v("inco"),bankAccount:v("bankAccount"),
     payTerms:v("payTerms"),currency:v("currency"),gstType:v("gstType"),
@@ -1376,12 +1383,18 @@ function restoreDraft(d) {
   if (d.withSeal!=null) document.getElementById("withSeal").checked=!!d.withSeal;
   if (d.qtWtUnit!=null) set("qtWtUnit",normWtUnit(d.qtWtUnit));
   updateBankPreview();updateCurrency();
-  if(d.docType) switchDocType(d.docType);
+  if (['invoice','quotation','letter'].includes(d.docType)) switchDocType(d.docType);
   const qv=(id,v)=>{const e=document.getElementById(id);if(e&&v!=null)e.value=v;};
   qv("qtBuyerCountry",d.qtBuyerCountry);qv("qtAttn",d.qtAttn);qv("qtAgent",d.qtAgent);
   qv("qtTolerance",d.qtTolerance);qv("qtPackaging",d.qtPackaging);
   qv("qtPONo",d.qtPONo);qv("qtOFCarrier",d.qtOFCarrier);qv("qtOFRate",d.qtOFRate);qv("qtOFTransit",d.qtOFTransit);
   qv("qtGrossWt",d.qtGrossWt);qv("qtNetWt",d.qtNetWt);
+  set("ltrRef",d.ltrRef);set("ltrDate",d.ltrDate);set("ltrTo",d.ltrTo);set("ltrSubject",d.ltrSubject);
+  if (d.ltrBody!=null) {
+    const lb=document.getElementById("ltrBody");
+    lb.innerHTML=sanitizeRichText(d.ltrBody);
+    if (!lb.textContent.trim()) lb.dispatchEvent(new Event("blur"));   // re-show placeholder
+  }
   updateUnitLabels();updateInvTypeUI();
 }
 function saveDraft() {
@@ -1861,6 +1874,35 @@ document.getElementById('navLogo').src = 'data:image/png;base64,' + LTR_LOGO;
 // ═══════════════════════════════════════════════════════════════════════
 // OFFICIAL LETTER PDF
 // ═══════════════════════════════════════════════════════════════════════
+// Letter body HTML comes back from drafts and records (records are untrusted —
+// the Sheet token is public), so keep only the formatting the editor itself
+// produces. Parsing via DOMParser is inert: nothing loads or runs.
+const RTE_TAGS = new Set(['B','STRONG','I','EM','U','BR','DIV','P','SPAN','FONT']);
+const RTE_DROP = new Set(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','TEMPLATE','NOSCRIPT']);
+const RTE_STYLES = ['font-size','color','text-align','font-weight','font-style','text-decoration'];
+function sanitizeRichText(html) {
+  const src = new DOMParser().parseFromString('<body>'+String(html||''), 'text/html').body;
+  const walk = (from, to) => {
+    for (const ch of from.childNodes) {
+      if (ch.nodeType === Node.TEXT_NODE) { to.appendChild(document.createTextNode(ch.textContent)); continue; }
+      if (ch.nodeType !== Node.ELEMENT_NODE || RTE_DROP.has(ch.tagName)) continue;
+      if (!RTE_TAGS.has(ch.tagName)) { walk(ch, to); continue; }   // unwrap, keep the text
+      const el = document.createElement(ch.tagName);
+      for (const prop of RTE_STYLES) {
+        const val = ch.style.getPropertyValue(prop);
+        if (val && !/url\(|expression/i.test(val)) el.style.setProperty(prop, val);
+      }
+      const color = ch.tagName === 'FONT' && ch.getAttribute('color');
+      if (color && /^(#[0-9a-f]{3,8}|[a-z]+|rgb\([\d\s,.%]+\))$/i.test(color)) el.setAttribute('color', color);
+      to.appendChild(el);
+      walk(ch, el);
+    }
+  };
+  const out = document.createElement('div');
+  walk(src, out);
+  return out.innerHTML;
+}
+
 // Letter body from the contenteditable, minus the grey placeholder the editor
 // shows while empty; '' when nothing has been written.
 function letterBodyHTML() {
@@ -2094,7 +2136,7 @@ function markSaved(key, fp) {
 
 function saveInvoiceRecord() {
   if (docType === 'letter' || !APPS_SCRIPT_URL) return;
-  const draftJson = JSON.stringify(getDraftData());
+  const draftJson = JSON.stringify(getDraftData(false));
   const key = recordKey(), fp = hashStr(draftJson);
   if (getSavedFps()[key] === fp) return;    // identical document already recorded
   const rec = {
@@ -2186,7 +2228,7 @@ function loadRecordToForm(id) {
   try {
     restoreDraft(JSON.parse(r.draftJson));
     // It's already in the Sheet — reprinting it unchanged shouldn't add a row.
-    markSaved(recordKey(), hashStr(JSON.stringify(getDraftData())));
+    markSaved(recordKey(), hashStr(JSON.stringify(getDraftData(false))));
     closeRecords();
     go(0);
     toast('Loaded '+(r.invNo||'record')+' into the form','ok');

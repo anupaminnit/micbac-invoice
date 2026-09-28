@@ -1065,6 +1065,31 @@ function selectPort(id, code, label) {
   closePortPicker(id);
 }
 
+const PORT_PLACEHOLDER = {pol:'Search Indian ports...', pod:'Search world ports...'};
+
+// Drafts store the port label ("Kolkata Port, India"). Records saved after an
+// earlier reload bug hold "INCCU — Kolkata Port, India" or deeper nestings of
+// it, so match on the label suffix to repair those too. An empty value resets
+// the picker rather than keeping whatever port the form showed before.
+function restorePort(id, value) {
+  const v = String(value || '').trim();
+  const trigger = document.getElementById(id+'-trigger');
+  if (!v) {
+    document.getElementById(id).value = '';
+    trigger.textContent = PORT_PLACEHOLDER[id];
+    trigger.classList.add('placeholder-text');
+    return;
+  }
+  const port = portPickerState[id].ports.find(p => {
+    const label = p.name + ', ' + p.country;
+    return v === label || v.endsWith(' — ' + label);
+  });
+  if (port) { selectPort(id, port.code, port.name + ', ' + port.country); return; }
+  document.getElementById(id).value = v;
+  trigger.textContent = v;
+  trigger.classList.remove('placeholder-text');
+}
+
 // Close pickers on outside click or scroll
 document.addEventListener('mousedown', e => {
   ['pol','pod'].forEach(id => {
@@ -1300,8 +1325,7 @@ function getDraftData() {
     consigneeType:v("consigneeType"),consigneeName:v("consigneeName"),
     notifyName:v("notifyName"),notifyAddr:v("notifyAddr"),
     notifyTax:v("notifyTax"),coo:v("coo"),
-    pol:v("pol"),polLabel:document.getElementById("pol-trigger")?.textContent||"",
-    pod:v("pod"),podLabel:document.getElementById("pod-trigger")?.textContent||"",
+    pol:v("pol"),pod:v("pod"),
     grossWt:v("grossWt"),netWt:v("netWt"),pkgCount:v("pkgCount"),
     pkgType:v("pkgType"),pkgDesc:v("pkgDesc"),pkgTotal:v("pkgTotal"),marking:v("marking"),
     goodsRows:JSON.parse(JSON.stringify(goodsRows)),
@@ -1325,8 +1349,7 @@ function restoreDraft(d) {
   set("notifyAddr",d.notifyAddr);set("notifyTax",d.notifyTax);set("coo",d.coo);
   set("grossWt",d.grossWt);set("netWt",d.netWt);set("pkgCount",d.pkgCount);
   set("pkgType",d.pkgType);set("pkgDesc",d.pkgDesc);set("pkgTotal",d.pkgTotal);set("marking",d.marking);
-  if (d.pol) selectPort("pol",d.pol,d.polLabel||d.pol);
-  if (d.pod) selectPort("pod",d.pod,d.podLabel||d.pod);
+  restorePort("pol",d.pol);restorePort("pod",d.pod);
   set("polManual",d.polManual);set("podManual",d.podManual);
   if (d.goodsRows) goodsRows=d.goodsRows;
   set("invType",d.invType||"commercial");
